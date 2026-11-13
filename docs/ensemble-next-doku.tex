@@ -188,9 +188,29 @@ Verbindung zu Anthropic oder OpenAI. \\
 \bottomrule
 \end{tabularx}
 
-Den Anstoß zum Umbau gab eine Empfehlung von Anthropic, eng gekoppelte Planungs- und
-Ausführungsagenten zu einem Hauptagenten zusammenzulegen. Ob das für die eigenen Aufgaben stimmt,
-sollte eine Messung zeigen und nicht die Empfehlung allein (Abschnitt~\ref{sec:messwerte}).
+\subsection{Der Anstoß zum Umbau}
+
+Das ursprüngliche ensemble lief als Team aus Claude Code, Codex und einem dritten Agenten, und das
+funktionierte. Den Anstoß zum Umbau gaben die Empfehlungen von Anthropic zum Arbeiten mit Claude
+Code. Sinngemäß: dem Agenten ein klares Ziel und eine Möglichkeit zur Selbstkontrolle geben, etwa
+Tests, und ihn dann arbeiten lassen. Den Kontext klein halten. Und Agenten-Teams verbrauchen ein
+Vielfaches an Tokens, weil jedes Mitglied sein eigenes Kontextfenster mitbringt. Daraus entstand die
+Frage, ob der Team-Aufbau für normale Aufgaben nötig ist. Beantworten sollte sie eine Messung und
+nicht die Empfehlung allein (Abschnitt~\ref{sec:messwerte}).
+
+Die Quellen, abgerufen am 13.11.2026:
+
+\begin{itemize}
+\item \href{https://code.claude.com/docs/en/best-practices}{Best practices for Claude Code}
+  (Anthropic, Dokumentation)
+\item \href{https://code.claude.com/docs/en/costs}{Manage costs effectively} (Anthropic,
+  Dokumentation). Der Abschnitt zu den Kosten von Agenten-Teams meint Teams aus mehreren
+  Claude-Instanzen.
+\item \href{https://www.anthropic.com/research/effective-context-engineering-for-ai-agents}{Effective
+  context engineering for AI agents} (Anthropic, 29.09.2025)
+\item \href{https://www.youtube.com/watch?v=vlfCjWuv4es}{Rethinking Claude Code Best Practices},
+  Vortrag von Lydia Hallie
+\end{itemize}
 
 %----------------------------------------------------------------------
 \section{Die zwei Arbeitsweisen}\label{sec:arbeitsweisen}
