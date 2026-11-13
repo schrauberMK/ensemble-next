@@ -5,8 +5,23 @@ Einstieg in eine neue Claude-Code-Sitzung. Ausführlich: `NEXT.md` (alle Pakete,
 
 ## Worum es geht
 
-Lutz las die Anthropic-Meldung, eng gekoppelte Planungs- und Ausführungsagenten in einen Hauptagenten
-mit Skills zu falten. Codex und AGY haben das Collab-Setup unabhängig mitbewertet, damit eine neutrale
+Der Anstoß kam aus den Empfehlungen von Anthropic zum Arbeiten mit Claude Code. Sinngemäß: dem Agenten
+ein klares Ziel und eine Möglichkeit zur Selbstkontrolle geben (etwa Tests) und ihn dann arbeiten lassen;
+den Kontext klein halten; und Agenten-Teams verbrauchen ein Vielfaches an Tokens, weil jedes Mitglied
+sein eigenes Kontextfenster mitbringt. Daraus entstand die Frage, ob der Team-Aufbau für normale Aufgaben
+nötig ist.
+
+Quellen (abgerufen am 13.11.2026):
+
+- [Best practices for Claude Code](https://code.claude.com/docs/en/best-practices)
+- [Manage costs effectively](https://code.claude.com/docs/en/costs), dort der Abschnitt zu den Kosten
+  von Agenten-Teams (gemeint sind Teams aus mehreren Claude-Instanzen)
+- [Effective context engineering for AI agents](https://www.anthropic.com/research/effective-context-engineering-for-ai-agents)
+  (29.09.2025)
+- Vortrag „Rethinking Claude Code Best Practices“ von Lydia Hallie:
+  <https://www.youtube.com/watch?v=vlfCjWuv4es>
+
+Codex und AGY haben das Collab-Setup unabhängig mitbewertet, damit eine neutrale
 Grundlage entsteht. Ergebnis: Das Zusammenspiel Codex + CC + AGY bleibt sinnvoll; umgebaut wird nur in
 einer getrennten Versuchsversion, und erst ein Vergleich entscheidet über Änderungen am Standard.
 
