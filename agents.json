@@ -1,0 +1,80 @@
+{
+  "codex": {
+    "name": "codex",
+    "command": "codex",
+    "flags": ["--dangerously-bypass-approvals-and-sandbox", "--no-daemon"],
+    "readyMarker": "›",
+    "inputMethod": "pasteFromFile",
+    "color": "blue",
+    "icon": "◆"
+  },
+  "claude": {
+    "name": "claude",
+    "command": "claude",
+    "flags": ["--permission-mode", "auto"],
+    "readyMarker": "❯",
+    "inputMethod": "sendKeys",
+    "color": "green",
+    "icon": "●"
+  },
+  "agy": {
+    "name": "agy",
+    "command": "agy",
+    "flags": ["--dangerously-skip-permissions"],
+    "readyMarker": "? for shortcuts",
+    "inputMethod": "sendKeys",
+    "bracketedPaste": true,
+    "color": "red",
+    "icon": "▲",
+    "unsetEnv": ["GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "NVIDIA_API_KEY"],
+    "teamRole": {
+      "role": "RESEARCHER/GRILLER",
+      "focus": "You research and challenge; you do not write code and do not edit files. Test every assumption and plan the lead and workers share: name counter-arguments, risks, missing tests and viable alternatives. Back facts with sources (documentation, code paths, command output) and mark what is uncertain. Ask at most three precise, prioritized questions per round. During longer research run team-alive about once a minute (the command is in your communication rules), otherwise the watchdog treats you as stalled; send team-say only with new findings. Agree to closure only once your open objections are answered or explicitly accepted."
+    }
+  },
+  "gemini": {
+    "name": "gemini",
+    "command": "gemini",
+    "flags": ["--yolo"],
+    "readyMarker": "Type your message",
+    "inputMethod": "pasteFromFile",
+    "color": "yellow",
+    "icon": "★"
+  },
+  "opencode": {
+    "name": "opencode",
+    "command": "opencode",
+    "flags": [],
+    "readyMarker": "Ask anything",
+    "inputMethod": "sendKeys",
+    "color": "cyan",
+    "icon": "▣"
+  },
+  "grok": {
+    "name": "grok",
+    "command": "grok",
+    "flags": ["--always-approve", "--trust"],
+    "readyMarker": "❯",
+    "inputMethod": "pasteFromFile",
+    "color": "white",
+    "icon": "✕"
+  },
+  "glm": {
+    "name": "glm",
+    "command": "glm",
+    "flags": ["--permission-mode", "auto"],
+    "readyMarker": "❯",
+    "inputMethod": "sendKeys",
+    "color": "magenta",
+    "icon": "◈"
+  },
+  "mimo": {
+    "name": "mimo",
+    "command": "mimo",
+    "flags": ["--trust", "--dangerously-skip-permissions"],
+    "readyMarker": "Type your message",
+    "inputMethod": "pasteFromFile",
+    "color": "cyan",
+    "icon": "◇"
+  }
+}

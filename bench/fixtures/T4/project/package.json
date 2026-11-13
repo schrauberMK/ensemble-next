@@ -1,0 +1,1 @@
+{ "name": "t4-config", "private": true, "scripts": { "test": "node test/config.test.js" } }

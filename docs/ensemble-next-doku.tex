@@ -1,0 +1,659 @@
+% ensemble-next: Dokumentation (Beta)
+% Bauen: lualatex ensemble-next-doku.tex (zweimal, wegen Inhaltsverzeichnis)
+\documentclass[a4paper,10pt,parskip=half-,headings=small]{scrartcl}
+
+\usepackage{fontspec}
+\setmainfont{DejaVu Sans}[Scale=0.92]
+\setsansfont{DejaVu Sans}[Scale=0.92]
+\setmonofont{DejaVu Sans Mono}[Scale=0.84]
+\usepackage[ngerman]{babel}
+\usepackage[a4paper,left=22mm,right=22mm,top=22mm,bottom=24mm]{geometry}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage[most]{tcolorbox}
+\usepackage{scrlayer-scrpage}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{ink}{HTML}{1D2430}
+\definecolor{muted}{HTML}{5B6575}
+\definecolor{line}{HTML}{D9DEE6}
+\definecolor{accent}{HTML}{2F5D8A}
+\definecolor{soft}{HTML}{EEF3F8}
+\definecolor{warn}{HTML}{A0631B}
+\definecolor{warnsoft}{HTML}{FBF3E6}
+
+\color{ink}
+\hypersetup{colorlinks=true,linkcolor=accent,urlcolor=accent,
+  pdftitle={ensemble-next: Dokumentation (Beta)},pdfauthor={schrauberMK},pdflang={de-DE}}
+\urlstyle{same}
+
+\addtokomafont{section}{\color{accent}}
+\addtokomafont{subsection}{\color{accent}}
+\addtokomafont{title}{\color{accent}}
+\setkomafont{descriptionlabel}{\bfseries}
+\setlist{itemsep=1pt,topsep=3pt,leftmargin=1.4em}
+
+\clearpairofpagestyles
+\ofoot{\small\color{muted}\pagemark}
+\ifoot{\small\color{muted}ensemble-next 1.2.0-beta.1 · Stand 13.11.2026}
+\setkomafont{pageheadfoot}{\normalfont}
+
+% \code{...}: Befehle, Dateinamen, Variablen. Unterstriche und Tilde brauchen keine Maskierung.
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+
+\newtcolorbox{befehl}{colback=soft,colframe=soft,boxrule=0pt,arc=0pt,
+  borderline west={2.2pt}{0pt}{accent},left=8pt,right=6pt,top=4pt,bottom=4pt,
+  before skip=6pt,after skip=8pt,fontupper=\ttfamily\small,breakable}
+\newtcolorbox{hinweis}[1][]{colback=warnsoft,colframe=warnsoft,boxrule=0pt,arc=0pt,
+  borderline west={2.2pt}{0pt}{warn},left=8pt,right=8pt,top=5pt,bottom=5pt,
+  before skip=8pt,after skip=10pt,breakable,#1}
+\newtcolorbox{merke}{colback=soft,colframe=soft,boxrule=0pt,arc=0pt,
+  borderline west={2.2pt}{0pt}{accent},left=8pt,right=8pt,top=5pt,bottom=5pt,
+  before skip=8pt,after skip=10pt,breakable}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\emergencystretch}{4em}
+
+\begin{document}
+\shorthandoff{"}
+
+\begin{titlepage}
+\vspace*{28mm}
+{\color{accent}\rule{\textwidth}{1.2pt}}\par\vspace{9mm}
+{\fontsize{30}{34}\selectfont\bfseries\color{accent} ensemble-next\par}
+\vspace{5mm}
+{\Large Claude Code setzt um, Codex prüft blind.\par}
+\vspace{2mm}
+{\large\color{muted} Dokumentation zum Beta-Stand\par}
+\vspace{9mm}
+{\color{accent}\rule{\textwidth}{1.2pt}}\par
+\vspace{14mm}
+
+\begin{tabular}{@{}L{32mm}L{110mm}@{}}
+Version & 1.2.0-beta.1 \\
+Stand & 13. November 2026 \\
+Repository & \url{https://github.com/schrauberMK/ensemble-next} \\
+Lizenz & MIT, ohne Gewährleistung \\
+Ursprung & Abkömmling von \url{https://github.com/michelhelsdingen/ensemble} \\
+\end{tabular}
+
+\vfill
+\begin{hinweis}
+\textbf{Beta.} ensemble-next ist ein Werkzeug aus dem eigenen Gebrauch und kein fertiges Produkt.
+Es kann Fehler enthalten, sich ohne Ankündigung ändern und verbraucht bei jedem Lauf Kontingent
+oder Geld bei den Anbietern der KI-Modelle. Die Agenten ändern Dateien ohne Rückfrage. Die Nutzung
+geschieht auf eigene Verantwortung. Es gibt keine Gewährleistung und keine Zusage, dass Fehler
+behoben oder Fragen beantwortet werden.
+\end{hinweis}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+%----------------------------------------------------------------------
+\section{Worum es geht}
+
+Wer mit einem KI-Programmierwerkzeug arbeitet, kennt das Problem: Das Werkzeug meldet „fertig, alle
+Tests grün“, und ob das stimmt, zeigt sich erst beim Nachsehen. ensemble-next nimmt dieses Nachsehen
+zu einem guten Teil ab. Es lässt \textbf{Claude Code} eine Aufgabe umsetzen und danach \textbf{Codex}
+das Ergebnis prüfen. Codex kommt von einem anderen Hersteller, sieht den Arbeitsverlauf nicht und
+darf nichts ändern. Es beurteilt nur, was am Ende im Projektordner steht.
+
+Dazwischen sitzen feste, nicht von einem Modell abhängige Kontrollen: Die Tests des Projekts laufen
+wirklich, das Urteil des Prüfers wird auf erfundene Fundstellen untersucht, und es wird festgehalten,
+zu welchem Stand das Urteil gehört.
+
+\begin{center}
+\begin{tikzpicture}[node distance=4.5mm,
+  schritt/.style={draw=line,line width=0.6pt,fill=white,minimum height=15mm,text width=25.5mm,
+    align=center,font=\footnotesize,inner sep=3pt},
+  pfeil/.style={-{Stealth[length=2.2mm]},draw=accent,line width=0.8pt}]
+\node[schritt] (a) {\textbf{1 · Auftrag}\\Aufgabe und Projektordner};
+\node[schritt,right=of a] (b) {\textbf{2 · Umsetzung}\\Claude Code plant und schreibt};
+\node[schritt,right=of b] (c) {\textbf{3 · Abschlusscheck}\\Tests des Projekts laufen};
+\node[schritt,right=of c] (d) {\textbf{4 · Blinde Prüfung}\\Codex, nur lesend};
+\node[schritt,right=of d] (e) {\textbf{5 · Urteil}\\du entscheidest};
+\draw[pfeil] (a)--(b); \draw[pfeil] (b)--(c); \draw[pfeil] (c)--(d); \draw[pfeil] (d)--(e);
+\foreach \n in {a,b,c,d,e} \draw[accent,line width=1.6pt] (\n.north west)--(\n.north east);
+\end{tikzpicture}
+\end{center}
+
+Am Ende steht ein Urteil in einer Textdatei. Committet wird nichts von selbst. Das bleibt deine
+Entscheidung, nachdem du Urteil und Diff gesehen hast.
+
+%----------------------------------------------------------------------
+\section{Stand, Haftung und was du wissen solltest}
+
+\begin{description}[leftmargin=0pt,itemsep=3pt]
+\item[Beta.] Der Standardablauf ist an kleinen Aufgaben gemessen und im täglichen Gebrauch. Die vier
+Ergänzungen vom November 2026 (Abschnitt~\ref{sec:sicherungen}) sind durch automatische Tests
+abgedeckt und an wenigen echten Läufen erprobt, aber noch nicht lange im Einsatz.
+\item[Getestete Umgebung.] Ubuntu Linux, Node.js~26, tmux~3.6, Python~3, Claude Code~2.1.322,
+codex-cli~0.167.1. Beide Kommandozeilenprogramme werden häufig aktualisiert. Ein Update kann den
+Ablauf stören; das ist während der Entwicklung mehrfach passiert. macOS ist vom Ursprungsprojekt
+her vorgesehen, hier aber nicht getestet. Windows wird nicht unterstützt.
+\item[Rechte der Agenten.] Die Agenten laufen ohne Rückfragen. Claude Code startet mit
+\code{--permission-mode auto}, Codex als Teammitglied mit
+\code{--dangerously-bypass-approvals-and-sandbox}. Sie können im Projektordner alles ändern und
+Befehle ausführen. Nimm einen Ordner, in dem das vertretbar ist, und arbeite mit Git.
+\item[Kosten.] Jeder Lauf verbraucht Kontingent eines Abos oder Geld über die Schnittstelle. In der
+Messreihe lag ein Lauf mit Claude bei rund 0{,}40 US-Dollar, gerechnet zum Listenpreis der
+Schnittstelle. Die Prüfung durch Codex kostet etwa 10\,000 Tokens.
+\item[Daten.] Aufgabe und Code gehen an Anthropic und OpenAI, so wie bei der normalen Nutzung der
+beiden Programme. ensemble-next schickt von sich aus nichts an Dritte. Benachrichtigungen über
+Telegram oder einen eigenen Alarm-Dienst gibt es nur, wenn du sie selbst einrichtest.
+\item[Keine Gewährleistung.] Die Software wird bereitgestellt, wie sie ist (Abschnitt~\ref{sec:lizenz}).
+\end{description}
+
+%----------------------------------------------------------------------
+\section{Herkunft und verwandte Projekte}
+
+ensemble-next ist nicht aus dem Nichts entstanden. Diese Projekte gehören dazu oder haben es
+beeinflusst:
+
+\begin{tabularx}{\textwidth}{@{}L{43mm}Y@{}}
+\toprule
+\textbf{Projekt} & \textbf{Bezug} \\
+\midrule
+\href{https://github.com/michelhelsdingen/ensemble}{michelhelsdingen/ensemble}\newline MIT &
+\textbf{Ursprungsprojekt.} ensemble-next ist ein Abkömmling davon. Server, Nachrichtenbus, Monitor,
+die Team-Arbeitsweise und die meisten Skripte stammen von dort. Der Urheberrechtsvermerk bleibt in
+der Lizenzdatei erhalten. \\
+\href{https://github.com/nyldn/claude-octopus}{nyldn/claude-octopus}\newline MIT &
+\textbf{Ideengeber.} Ein Plugin, das viele Modelle gegeneinander prüfen lässt. Von dort stammen die
+Anregungen für Zitatprüfung, Abbruchregeln, Bindung an die Prüfsumme und den abgeschotteten Prüfer.
+Es wurde kein Code übernommen. ensemble-next geht bewusst den kleineren Weg: ein Agent arbeitet,
+einer prüft. \\
+\href{https://github.com/cubetribe/ClaudeCode_GodMode-On}{cubetribe/\allowbreak ClaudeCode\_GodMode-On}\newline proprietär &
+\textbf{CC\_GodMode.} Ein Regelwerk für Claude Code mit Rollen, Qualitätsstufen und Berichten.
+Eigenständig und \emph{nicht} in diesem Repository enthalten. ensemble-next braucht es nicht und
+verträgt sich damit. Der Abschlusscheck schließt eine Lücke, die dort offen bleibt: GodMode prüft
+beim Ende eines Unteragenten, ensemble-next auch dann, wenn Claude selbst schreibt. \\
+\href{https://github.com/cubetribe/CODEX_GodMode_ON}{cubetribe/\allowbreak CODEX\_GodMode\_ON}\newline proprietär &
+\textbf{Das Gegenstück für Codex.} Ebenfalls nicht enthalten. Wer es installiert hat, findet seine
+Regeln in \code{~/.codex/AGENTS.md}; diese Datei lädt Codex auch als Prüfer
+(Abschnitt~\ref{sec:grenzen}). \\
+\href{https://docs.anthropic.com/en/docs/claude-code}{Claude Code} und
+\href{https://github.com/openai/codex}{Codex CLI} &
+Die beiden Werkzeuge, die hier zusammenarbeiten. ensemble-next startet sie nur und steht in keiner
+Verbindung zu Anthropic oder OpenAI. \\
+\bottomrule
+\end{tabularx}
+
+Den Anstoß zum Umbau gab eine Empfehlung von Anthropic, eng gekoppelte Planungs- und
+Ausführungsagenten zu einem Hauptagenten zusammenzulegen. Ob das für die eigenen Aufgaben stimmt,
+sollte eine Messung zeigen und nicht die Empfehlung allein (Abschnitt~\ref{sec:messwerte}).
+
+%----------------------------------------------------------------------
+\section{Die zwei Arbeitsweisen}\label{sec:arbeitsweisen}
+
+ensemble-next kennt zwei Wege, eine Aufgabe zu erledigen. Du wählst beim Start, welcher gilt. Eine
+automatische Wahl gibt es nicht.
+
+\subsection{Standard: Claude Code allein, Codex prüft}
+
+Ohne weitere Angabe arbeitet Claude Code allein. Es liest das Projekt, plant, schreibt den Code und
+lässt die Tests laufen, alles in einem Zusammenhang. Meldet es am Ende „bereit zur Prüfung“, startet
+der Server die blinde Prüfung durch Codex.
+
+Das ist der Normalfall für abgegrenzte Aufgaben: einen Fehler beheben, eine Funktion ergänzen, ein
+Modul umbauen.
+
+\subsection{Team: Codex leitet, Claude Code setzt um}
+
+Nennst du beim Start \code{codex,claude}, bilden beide ein Team. Der zuerst genannte Agent leitet:
+Codex liest die Aufgabe, plant und übergibt einen Arbeitsauftrag. Claude Code setzt ihn um und meldet
+zurück. Codex nimmt ab oder fragt nach. Beide tauschen sich über einen Nachrichtenkanal aus, dem du
+zusehen kannst. Danach läuft dieselbe blinde Prüfung wie im Standardfall, in einer frischen
+Codex-Sitzung ohne Kenntnis der Teamarbeit.
+
+Das Team lohnt sich, wenn zwei Sichtweisen gefragt sind: bei offenen Entwurfsfragen, bei Recherche
+oder wenn ein zweites Modell den Plan mittragen soll. Weitere Agenten sind möglich, etwa ein dritter
+als Rechercheur und kritischer Fragesteller. Für typische Aufgaben gibt es Rollenvorlagen
+(\code{review}, \code{implement}, \code{research}, \code{debug}).
+
+\subsection{Der Vergleich}
+
+\begin{tabularx}{\textwidth}{@{}L{40mm}YY@{}}
+\toprule
+ & \textbf{Standard} & \textbf{Team} \\
+\midrule
+Aufruf & ohne Angabe von Agenten & \code{codex,claude} als drittes Argument oder
+\code{COLLAB_AGENTS=codex,claude} \\
+Planung & Claude Code & Codex \\
+Umsetzung & Claude Code & Claude Code \\
+Abschlusscheck & ja & ja, für Claude Code \\
+Blinde Prüfung danach & Codex, frische Sitzung & Codex, frische Sitzung \\
+Ausstattung von Codex & Prüfer ohne MCP-Server, Plugins, Apps und Erinnerungen &
+Team-Codex mit deiner vollen Codex-Konfiguration; der Prüfer danach wieder abgeschottet \\
+Rechte von Codex & nur lesen, leerer Ordner & schreiben im Projektordner \\
+Dauer in der Messreihe & 57 s (Median) & 156 s (Median) \\
+\bottomrule
+\end{tabularx}
+
+\begin{merke}
+\textbf{Warum Codex in den beiden Rollen verschieden ausgestattet ist.} Der Prüfer soll nur ein
+Bündel lesen und urteilen. Alles Weitere kostet bei jeder Prüfung Tokens und macht das Urteil davon
+abhängig, was gerade installiert ist. Deshalb startet er ohne die persönliche Codex-Konfiguration.
+Der Team-Codex dagegen arbeitet mit: Er soll recherchieren, Werkzeuge nutzen und Dateien ändern
+können. Deshalb bekommt er alles, was deine Codex-Installation bietet. An der Datei
+\code{~/.codex/AGENTS.md} ändert ensemble-next in keinem Fall etwas.
+\end{merke}
+
+\subsection{So wählst du}
+
+Im Terminal ist die Arbeitsweise das dritte Argument:
+
+\begin{befehl}
+\# Standard: Claude Code allein, danach blinde Prüfung\\
+./scripts/collab-launch.sh /pfad/zum/projekt "Aufgabe ..."\\[4pt]
+\# Team: Codex leitet, Claude Code setzt um\\
+./scripts/collab-launch.sh /pfad/zum/projekt "Aufgabe ..." codex,claude\\[4pt]
+\# Team zu dritt, mit Rollenvorlage als viertem Argument\\
+./scripts/collab-launch.sh /pfad/zum/projekt "Aufgabe ..." codex,claude,agy research
+\end{befehl}
+
+In Claude Code genügt der Befehl \code{/collab-next} mit der Aufgabe. Nennst du darin Agenten
+(„mit Codex im Team“), gibt Claude sie weiter. Wer immer dieselbe Besetzung will, setzt einmal
+\code{COLLAB_AGENTS}. Es gilt: drittes Argument vor \code{COLLAB_AGENTS} vor dem Standard.
+
+%----------------------------------------------------------------------
+\section{Welche Modelle arbeiten und wie du sie einstellst}\label{sec:modelle}
+
+ensemble-next bringt keine eigenen Modelle mit und legt auch keine fest. Es startet die
+Kommandozeilenprogramme \code{claude} und \code{codex} so, wie sie auf deinem Rechner eingerichtet
+sind. Welches Modell arbeitet, bestimmst du also dort, wo du es auch sonst bestimmst. Es gibt drei
+Stellen, eine je Rolle.
+
+\begin{tabularx}{\textwidth}{@{}L{31mm}L{43mm}Y@{}}
+\toprule
+\textbf{Rolle} & \textbf{Gestartet als} & \textbf{Modell kommt aus} \\
+\midrule
+Claude Code\newline (setzt um) & \code{claude --permission-mode auto} &
+deiner Claude-Code-Einstellung: dem zuletzt mit \code{/model} gewählten Modell, dem Eintrag
+\code{model} in \code{~/.claude/settings.json} oder der Variable \code{ANTHROPIC_MODEL} \\
+Codex im Team\newline (leitet, plant) & \texttt{codex -{}-dangerously-\allowbreak bypass-\allowbreak approvals-\allowbreak and-sandbox -{}-no-daemon} &
+\code{~/.codex/config.toml}: Einträge \code{model} und \code{model_reasoning_effort} \\
+Codex als Prüfer\newline (urteilt) & \code{codex exec --sandbox read-only} mit Zusatzargumenten &
+denselben beiden Einträgen; ensemble-next liest sie aus und übergibt sie ausdrücklich \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Claude Code auf ein Modell festlegen}
+
+Für einen Lauf oder dauerhaft für den Server genügt eine Variable beim Serverstart. Der Server reicht
+alle Variablen, die mit \code{ANTHROPIC_}, \code{OPENAI_} oder \code{ENSEMBLE_} beginnen, an die
+Agenten weiter:
+
+\begin{befehl}
+ANTHROPIC\_MODEL=opus npm run dev
+\end{befehl}
+
+Soll die Festlegung zu ensemble-next gehören und nicht zu deiner allgemeinen Einstellung, trägst du
+das Modell in die Startargumente ein. Die Datei \code{agents.json} beschreibt, wie jeder Agent
+gestartet wird:
+
+\begin{befehl}
+"claude": \{\\
+\hspace*{1.5em}"command": "claude",\\
+\hspace*{1.5em}"flags": ["--permission-mode", "auto", "--model", "opus", "--effort", "high"]\\
+\}
+\end{befehl}
+
+Am saubersten ist eine eigene Kopie dieser Datei außerhalb des Repositorys. Die Variable
+\code{ENSEMBLE_AGENTS_CONFIG} nennt beim Serverstart den Pfad zu dieser Kopie. So bleibt das
+Repository unverändert und ein Update überschreibt nichts.
+
+\subsection{Codex im Team festlegen}
+
+Ohne Zutun gilt, was in \code{~/.codex/config.toml} steht. Für eine Festlegung nur in ensemble-next
+kommen die Schalter ebenfalls in \code{agents.json}:
+
+\begin{befehl}
+"codex": \{\\
+\hspace*{1.5em}"command": "codex",\\
+\hspace*{1.5em}"flags": ["--dangerously-bypass-approvals-and-sandbox", "--no-daemon",\\
+\hspace*{5em}"-m", "MODELLNAME", "-c", "model\_reasoning\_effort=\textbackslash"high\textbackslash""]\\
+\}
+\end{befehl}
+
+\subsection{Den Prüfer festlegen}
+
+Der Prüfer nimmt dasselbe Modell und dieselbe Denkstufe wie dein normales Codex. Das ist Absicht:
+Ohne die persönliche Konfiguration fiele Codex sonst auf sein Standardmodell ohne Denkstufe zurück,
+und das Urteil wäre schwächer, ohne dass es jemand merkt. Soll der Prüfer ein anderes Modell
+bekommen als dein Arbeits-Codex, setzt du beim Serverstart:
+
+\begin{befehl}
+COLLAB\_REVIEW\_MODEL=MODELLNAME COLLAB\_REVIEW\_EFFORT=high npm run dev
+\end{befehl}
+
+Die Datei \code{review/reviewer.json} hält für jede Prüfung fest, mit welchem Modell und welcher
+Denkstufe sie lief. Die Modellnamen sind die, die das jeweilige Programm selbst kennt; ensemble-next
+prüft sie nicht.
+
+\subsection{Was beim Einstellen zählt}
+
+\begin{itemize}
+\item \textbf{Zwei Hersteller.} Der Wert der blinden Prüfung liegt darin, dass ein anderes Modell
+  urteilt als das, das gearbeitet hat. Ein Prüfer aus demselben Haus übersieht eher dieselben Fehler.
+\item \textbf{Der Prüfer darf stark sein.} Eine Prüfung ist kurz. Ein gründliches Modell mit hoher
+  Denkstufe kostet hier wenig und bringt viel.
+\item \textbf{Der Umsetzer trägt die Hauptlast.} Bei ihm entscheidet sich Verbrauch und Dauer. In
+  der Messreihe entfielen im Standardweg rund 345\,000 Tokens auf Claude und 25\,000 auf Codex.
+\item \textbf{Variablen gelten ab Serverstart.} Der Server gibt sie an Agenten und Prüfer weiter.
+  Eine Änderung wirkt erst nach einem Neustart des Servers.
+\item \textbf{Messwerte hängen am Modell.} Die Zahlen in Abschnitt~\ref{sec:messwerte} gelten für die
+  dort genannten Modelle. Mit anderen Modellen können Dauer, Verbrauch und Qualität abweichen.
+\end{itemize}
+
+%----------------------------------------------------------------------
+\section{Die Sicherungen im Einzelnen}\label{sec:sicherungen}
+
+\subsection{Abschlusscheck}
+
+Jedes Mal, wenn Claude Code stoppt, läuft ein Prüfskript. Es führt nur aus, was das Projekt selbst
+festlegt: die npm-Skripte \code{typecheck}, \code{lint}, \code{test} und \code{build}, soweit sie in
+\code{package.json} stehen, und \code{pytest}, sobald es Python-Tests gibt. Geraten wird nichts.
+
+\begin{tabularx}{\textwidth}{@{}L{26mm}Y@{}}
+\toprule
+\textbf{Ergebnis} & \textbf{Bedeutung} \\
+\midrule
+\code{PASS} & Alle Prüfungen sind grün. \\
+\code{FAIL} & Mindestens eine Prüfung ist rot. Claude wird mit der Fehlerausgabe zurückgeschickt und
+soll die Ursache beheben, nicht die Prüfung abschwächen. \\
+\code{INCOMPLETE} & Zeitüberschreitung, oder npm beziehungsweise pytest fehlt. \\
+\code{SKIPPED} & Das Projekt legt keine Prüfungen fest. Der Prüfer kann „Tests grün“ dann nicht
+bestätigen. \\
+\code{NO_CHANGES} & Es wurde nichts geändert. \\
+\bottomrule
+\end{tabularx}
+
+Das Ergebnis steht in einem Protokoll, das der Prüfer zu sehen bekommt. Eine Behauptung „Tests grün“
+ohne grünes Protokoll fällt damit auf.
+
+\subsection{Abbruchregeln für die Nacharbeit}
+
+Ein Agent, der immer wieder ändert und immer wieder scheitert, verbraucht Tokens ohne Ergebnis.
+Deshalb gelten Obergrenzen, gezählt ab der ersten roten Prüfung bis zur nächsten grünen:
+
+\begin{tabularx}{\textwidth}{@{}YL{16mm}L{58mm}@{}}
+\toprule
+\textbf{Regel} & \textbf{Standard} & \textbf{Variable} \\
+\midrule
+Versuche für denselben Änderungsstand & 3 & \code{ENSEMBLE_VERIFY_MAX_BLOCKS} \\
+Nacharbeitsrunden insgesamt & 6 & \code{ENSEMBLE_VERIFY_MAX_ROUNDS} \\
+Minuten seit der ersten roten Prüfung & 30 & \code{ENSEMBLE_VERIFY_MAX_MINUTES} \\
+Änderungen in Folge mit unveränderter Fehlerausgabe & 2 & \code{ENSEMBLE_VERIFY_STALL_ROUNDS} \\
+\bottomrule
+\end{tabularx}
+
+Der Wert \code{0} schaltet eine Regel ab. Ist eine Grenze erreicht, wird Claude nicht weiter
+zurückgeschickt. Der Stand bleibt als ungelöst markiert, das Protokoll nennt den Grund, und die
+Zusammenfassung zeigt ihn an. Die Standardwerte sind gesetzt, nicht gemessen.
+
+\subsection{Blinde Prüfung}
+
+Der Prüfer bekommt ein festes Bündel aus drei Teilen und sonst nichts: die Aufgabe im Wortlaut, den
+Diff seit dem Stand bei Arbeitsbeginn samt neuer Dateien, und das Protokoll des Abschlusschecks. Er
+sieht weder den Chat noch den Plan noch die Selbsteinschätzung des Umsetzers. Er läuft nur lesend in
+einem leeren Ordner und antwortet in einer festen Form:
+
+\begin{tabularx}{\textwidth}{@{}L{42mm}Y@{}}
+\toprule
+\textbf{Urteil} & \textbf{Bedeutung und nächster Schritt} \\
+\midrule
+\code{ACCEPTED} & Alle Kriterien erfüllt, Abschlusscheck grün, kein Blocker. Diff ansehen, dann
+selbst committen. \\
+\code{CHANGES_REQUESTED} & Mindestens ein Kriterium nicht erfüllt oder nicht belegbar, die Lücken
+sind behebbar. Befunde lesen, nachbessern lassen oder selbst entscheiden. \\
+\code{REJECTED} & Falsche Richtung, abgeschwächte Prüfungen oder Änderungen weit außerhalb der
+Aufgabe. Nicht übernehmen, Auftrag schärfen. \\
+\bottomrule
+\end{tabularx}
+
+Nach einem Urteil wird nicht automatisch nachgearbeitet. Die Befunde gehen an dich.
+
+\subsection{Zitatprüfung}
+
+Der Prüfer muss jede Feststellung mit Datei und Zeile belegen. Ein Skript gleicht diese Fundstellen
+danach mit dem Diff und dem Projektordner ab. Es braucht dafür kein Modell und keine Tokens.
+
+\begin{tabularx}{\textwidth}{@{}L{26mm}Y@{}}
+\toprule
+\textbf{Status} & \textbf{Bedeutung} \\
+\midrule
+\code{grounded} & Mindestens eine Fundstelle liegt im geprüften Diff, keine ist falsch. \\
+\code{ungrounded} & Keine Fundstelle liegt im Diff. Ein \code{ACCEPTED} gilt dann als nicht belegt. \\
+\code{invalid} & Eine Fundstelle nennt eine Datei, die es nicht gibt, oder eine Zeile hinter dem
+Dateiende. Das Urteil gilt als nicht verlässlich. \\
+\bottomrule
+\end{tabularx}
+
+Der Hinweis wird an das Urteil angehängt. Eine Fundstelle, die es gibt, beweist allerdings nicht,
+dass der Prüfer richtig geurteilt hat. Die Zitatprüfung fängt erfundene Belege ab, nicht falsche
+Schlüsse.
+
+\subsection{Bindung an die Prüfsumme}
+
+Zu jedem Urteil wird die Prüfsumme (SHA-256) des geprüften Stands festgehalten. Ändert sich der
+Projektordner, während die Prüfung läuft, steht das im Hinweis: Das Urteil gilt dann für den älteren
+Stand. Später, etwa vor einem Merge, lässt sich das nachprüfen:
+
+\begin{befehl}
+./scripts/verdict-check.sh /tmp/ensemble-next/TEAM\_ID/review
+\end{befehl}
+
+Rückgabe 0 heißt aktuell, 1 veraltet, 2 nicht feststellbar. Die Prüfsumme berechnet das Skript, nicht
+das Modell.
+
+\subsection{Abgeschotteter Prüfer}
+
+Der Prüfer startet ohne die persönliche Codex-Konfiguration: ohne MCP-Server, Plugins, Apps und
+Erinnerungen. Auf dem Entwicklungsrechner bekam er vorher 405 MCP-Werkzeuge mitgeliefert, jetzt
+keins. Zwei Prüfungen kosteten danach 9\,900 und 10\,400 Tokens statt 17\,100 und 19\,400, bei
+gleichen Urteilen. Lehnt eine neue Codex-Version die Zusatzargumente ab, läuft die Prüfung einmal auf
+dem alten Weg, statt zu scheitern. \code{COLLAB_REVIEW_ISOLATED=0} schaltet die Abschottung ab.
+
+%----------------------------------------------------------------------
+\section{Einrichtung und erster Lauf}
+
+\subsection{Voraussetzungen}
+
+\begin{itemize}
+\item Linux mit Node.js, tmux, Python~3, Git und curl
+\item \code{claude} (Claude Code) und \code{codex}, beide installiert und angemeldet
+\item ein Projektordner, der ein Git-Repository mit mindestens einem Commit ist
+\end{itemize}
+
+\subsection{Einrichten}
+
+\begin{befehl}
+git clone https://github.com/schrauberMK/ensemble-next.git\\
+cd ensemble-next\\
+npm install\\
+npm run dev
+\end{befehl}
+
+Der Server läuft auf Port 23100 und bleibt in diesem Fenster offen. Ob er antwortet, zeigt:
+
+\begin{befehl}
+curl -s localhost:23100/api/v1/health
+\end{befehl}
+
+In einem zweiten Terminal richtet ein Skript den Befehl \code{/collab-next} in Claude Code ein:
+
+\begin{befehl}
+./scripts/setup-claude-code.sh
+\end{befehl}
+
+\begin{hinweis}
+Starte Server und tmux aus einem normalen Terminal, nicht aus einer Desktop-Anwendung heraus. Aus
+einer App gestartet erben die Agenten deren Umgebung, und Codex beendete sich in Tests dann ohne
+Meldung.
+\end{hinweis}
+
+\subsection{Erster Lauf}
+
+Ein Wegwerf-Projekt zum Ausprobieren:
+
+\begin{befehl}
+mkdir -p \textasciitilde/test-ensemble \&\& cd \textasciitilde/test-ensemble\\
+git init -q \&\& echo "\# Test" > README.md \&\& git add . \&\& git commit -qm Start
+\end{befehl}
+
+Dann in Claude Code, im Projektordner:
+
+\begin{befehl}
+/collab-next Schreibe eine Funktion ... mit Tests. Alle Tests muessen gruen sein.
+\end{befehl}
+
+Gute Aufträge nennen ein prüfbares Ziel: „mit Tests, alle Tests grün“, „\code{test/} nicht ändern“,
+„nur Datei X“. An diesen Kriterien misst der Prüfer das Ergebnis.
+
+\subsection{Ergebnis lesen}
+
+Alles liegt unter \code{/tmp/ensemble-next/TEAM_ID/} und verschwindet beim Neustart des Rechners.
+
+\begin{tabularx}{\textwidth}{@{}L{48mm}Y@{}}
+\toprule
+\textbf{Datei} & \textbf{Inhalt} \\
+\midrule
+\code{summary.txt} & Rückmeldung des Umsetzers, geänderte Dateien, Abschlusscheck \\
+\code{review/verdict.txt} & Urteil mit Kriterien und Befunden, darunter der Hinweis der Zitatprüfung
+mit Prüfsumme \\
+\code{review/verdict.raw.txt} & Urteil im Wortlaut des Prüfers, ohne Zusatz \\
+\code{review/grounding.json} & Einzelheiten der Zitatprüfung und die Prüfsummen \\
+\code{review/reviewer.json} & Modell, Denkstufe und ob abgeschottet geprüft wurde \\
+\code{review/error.txt} & nur wenn die Prüfung kein Urteil liefern konnte \\
+\bottomrule
+\end{tabularx}
+
+Die Prüfung ist fertig, sobald \code{review/.done} existiert.
+
+%----------------------------------------------------------------------
+\section{Schalter}
+
+Alle Schalter sind Umgebungsvariablen. Die mit \code{ENSEMBLE_} und \code{COLLAB_REVIEW_} gelten ab
+Serverstart, die übrigen \code{COLLAB_}-Variablen für den einzelnen Aufruf.
+
+{\small
+\begin{tabularx}{\textwidth}{@{}L{58mm}Y@{}}
+\toprule
+\textbf{Variable} & \textbf{Wirkung} \\
+\midrule
+\code{COLLAB_AGENTS} & Besetzung, etwa \code{codex,claude}; der erste Agent leitet \\
+\code{COLLAB_TEMPLATE} & Rollenvorlage: \code{review}, \code{implement}, \code{research},
+\code{debug} \\
+\code{COLLAB_AUTO_REVIEW=0} & keine blinde Prüfung für diesen Start \\
+\code{ENSEMBLE_AUTO_REVIEW=0} & keine blinde Prüfung für den ganzen Server \\
+\code{COLLAB_REVIEW_MODEL} & Modell des Prüfers, abweichend von der Codex-Konfiguration \\
+\code{COLLAB_REVIEW_EFFORT} & Denkstufe des Prüfers \\
+\code{COLLAB_REVIEW_ISOLATED=0} & Prüfer mit voller Codex-Konfiguration starten \\
+\code{COLLAB_REVIEW_RETRY_S} & Pause vor einem neuen Versuch, wenn Codex überlastet ist (120 s,
+höchstens 3 Versuche) \\
+\code{COLLAB_AGENT_WAIT_SECS} & Wartezeit auf die erste Nachricht beim Start (60 s) \\
+\code{ENSEMBLE_VERIFY_ON_STOP=0} & Abschlusscheck abschalten \\
+\code{ENSEMBLE_VERIFY_TIMEOUT_MS} & Zeitgrenze je Prüfung im Abschlusscheck (120\,000) \\
+\code{ENSEMBLE_VERIFY_MAX_BLOCKS} & Versuche je Änderungsstand (3) \\
+\code{ENSEMBLE_VERIFY_MAX_ROUNDS} & Nacharbeitsrunden insgesamt (6) \\
+\code{ENSEMBLE_VERIFY_MAX_MINUTES} & Minuten Nacharbeit (30) \\
+\code{ENSEMBLE_VERIFY_STALL_ROUNDS} & Änderungen in Folge ohne Wirkung (2) \\
+\code{ENSEMBLE_AGENTS_CONFIG} & eigene \code{agents.json} statt der im Repository \\
+\code{ANTHROPIC_MODEL} & Modell für Claude Code, wird an den Agenten weitergereicht \\
+\bottomrule
+\end{tabularx}}
+
+%----------------------------------------------------------------------
+\section{Messwerte}\label{sec:messwerte}
+
+Bevor der Standardweg festgelegt wurde, liefen beide Arbeitsweisen gegeneinander: vier kleine
+Aufgaben (Fehlerbehebung, Funktion über mehrere Dateien, Umbau mit Auflage, absichtlich
+widersprüchlicher Auftrag), je zweimal je Arbeitsweise, zusammen 16 Läufe am 30.10.2026. Die
+Entscheidungsregel stand vorher fest: Der Standardweg gewinnt nur, wenn die Qualität mindestens
+gleich und Dauer oder Verbrauch um mindestens 20 Prozent besser sind.
+
+\begin{tabularx}{\textwidth}{@{}YL{36mm}L{36mm}@{}}
+\toprule
+\textbf{Kennzahl} & \textbf{Team (Codex plant)} & \textbf{Standard (Claude allein)} \\
+\midrule
+Läufe & 8 & 8 \\
+versteckte Abnahmetests bestanden & 8 & 8 \\
+Verstöße gegen den Schreibbereich & 0 & 0 \\
+blind akzeptiert & 6 & 6 \\
+Widerspruch richtig gemeldet & 2 von 2 & 2 von 2 \\
+Dauer, Median & 156 s & 57 s \\
+Claude-Tokens, Median & 607\,000 & 345\,000 \\
+Codex-Tokens, Median & 313\,000 & 25\,000 \\
+Zurückweisungen durch den Abschlusscheck & 6 & 0 \\
+\bottomrule
+\end{tabularx}
+
+Gemessen wurde mit Claude Opus~5.5 und, auf der Codex-Seite, GPT-6.1 Sol. Die je zwei nicht
+akzeptierten Läufe gehören zur widersprüchlichen Aufgabe; dort ist \code{CHANGES_REQUESTED} das
+richtige Urteil.
+
+\begin{hinweis}
+Das ist ein Pilotversuch mit wenigen, kleinen Aufgaben auf einem Rechner. Er zeigt eine Tendenz für
+diese Art von Aufgaben und ist kein allgemeiner Beweis. Bei großen oder offenen Aufgaben kann das
+Team im Vorteil sein. Die Rohdaten liegen unter \code{bench/results/}, die Werkzeuge unter
+\code{bench/}; die Messung lässt sich mit eigenen Aufgaben wiederholen.
+\end{hinweis}
+
+%----------------------------------------------------------------------
+\section{Grenzen und bekannte Punkte}\label{sec:grenzen}
+
+\begin{itemize}
+\item \textbf{Die blinde Prüfung ist kein Ersatz für eigenes Nachsehen.} Sie senkt die Zahl der
+  Fälle, in denen etwas Falsches als fertig gilt. Ein \code{ACCEPTED} heißt: Die genannten Kriterien
+  sind nach Ansicht eines zweiten Modells erfüllt.
+\item \textbf{Ohne Tests kein Beleg.} Legt das Projekt keine Prüfungen fest, kann niemand „Tests
+  grün“ bestätigen.
+\item \textbf{Die globale Codex-Anweisungsdatei wird weiter geladen.} Auch der abgeschottete Prüfer
+  liest \code{~/.codex/AGENTS.md}. Ein Schalter dagegen zeigte in codex-cli~0.167.1 keine Wirkung.
+\item \textbf{Zeilenangaben werden nur grob geprüft.} Die Zitatprüfung vergleicht mit Bereichen, weil
+  ein Prüfer beim Zählen im Diff leicht ein paar Zeilen danebenliegt.
+\item \textbf{„Kein Fortschritt“ erkennt nur wortgleiche Fehlerausgaben.} Ändert sich die Ausgabe,
+  gilt das als Fortschritt, auch wenn es keiner ist. Dann greifen Runden- und Zeitgrenze.
+\item \textbf{Updates der beiden Programme können den Start stören.} Das Erkennen von Startdialogen
+  hängt an Zeichen im Terminalfenster und musste schon nachgezogen werden.
+\item \textbf{Aus einer Desktop-App gestartet} kann Codex im Team ausfallen. Server und tmux gehören
+  in ein normales Terminal.
+\item \textbf{Ein Rechner, ein Nutzer.} Der Server hat keine Zugangskontrolle und lauscht lokal. Er
+  ist nicht für den Betrieb im Netz gedacht.
+\item \textbf{Testläufe hinterlassen Reste.} Die Testsuite lässt gelegentlich einen Testserver
+  zurück, und Codex merkt sich freigegebene Ordner in seiner Konfiguration.
+\end{itemize}
+
+Das Entwicklungstagebuch \code{NEXT.md} im Repository führt alle Befunde, Fehlversuche und offenen
+Punkte mit Datum.
+
+%----------------------------------------------------------------------
+\section{Lizenz und Haftung}\label{sec:lizenz}
+
+ensemble-next steht unter der \textbf{MIT-Lizenz}, wie das Ursprungsprojekt. Du darfst die Software
+nutzen, ändern und weitergeben, auch gewerblich, solange der Urheberrechtsvermerk und der Lizenztext
+erhalten bleiben. Maßgeblich ist die Datei \code{LICENSE} im Repository.
+
+\begin{hinweis}
+Die Software wird ohne jede Gewährleistung bereitgestellt, weder ausdrücklich noch stillschweigend.
+Das schließt die Eignung für einen bestimmten Zweck ein. Die Urheber haften nicht für Schäden, die
+aus der Nutzung entstehen, etwa für verlorene Daten, fehlerhaften Code oder Kosten bei den Anbietern
+der KI-Modelle.
+\end{hinweis}
+
+Die verwandten Projekte haben eigene Lizenzen. CC\_GodMode und sein Gegenstück für Codex sind
+proprietär und nicht Teil dieses Repositorys. „Claude“ und „Claude Code“ sind Marken von Anthropic,
+„Codex“ und „ChatGPT“ Marken von OpenAI. ensemble-next ist ein unabhängiges Projekt und wird von
+keinem der beiden Unternehmen unterstützt oder geprüft.
+
+\end{document}

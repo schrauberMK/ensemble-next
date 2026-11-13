@@ -1,0 +1,8 @@
+{
+  "source": "https://platform.claude.com/docs/en/about-claude/pricing (Model pricing, Zeile Claude Opus 5.5), abgerufen über den Skill claude-api",
+  "date": "2026-10-29",
+  "note": "USD pro Million Tokens. cacheWrite = 1h-Cache-Schreibpreis (8 USD), weil die Pilotläufe r1-r4 alle Cache-Schreibvorgänge als ephemeral_1h abrechnen (5m: 0). 5m-Schreibpreis wäre 5 USD. Cache-Lesen 0.05x Basispreis.",
+  "models": {
+    "claude-opus-5-5": {"input": 4.0, "cacheWrite": 8.0, "cacheRead": 0.2, "output": 20.0}
+  }
+}

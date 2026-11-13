@@ -1,0 +1,1 @@
+{ "name": "t1-paginate", "private": true, "scripts": { "test": "node test/paginate.test.js" } }

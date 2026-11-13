@@ -1,0 +1,145 @@
+{
+  "runId": "T4-B-r2-20261030T024040Z",
+  "task": "T4",
+  "variant": "B",
+  "rep": 2,
+  "status": "finished",
+  "dryRun": false,
+  "teamId": "4a3fcff7-e944-40b0-ae73-8ff847b1589d",
+  "teamName": "collabnext-1793328041723-2367",
+  "ensembleNextCommit": "1eaf97c783b4b44baa5bdd86830458ca8fb06b56",
+  "ensembleNextDirty": true,
+  "quality": {
+    "hiddenPass": true,
+    "visiblePass": true,
+    "guardIntact": true,
+    "scopeViolation": false,
+    "escalationExpected": true,
+    "escalationCorrect": true,
+    "falseEscalation": false,
+    "readyWithoutPass": false,
+    "verdict": "CHANGES_REQUESTED",
+    "aborted": false,
+    "invalid": null
+  },
+  "changes": {
+    "files": [],
+    "outOfScope": [],
+    "guardBroken": [],
+    "commits": []
+  },
+  "checks": {
+    "visible": [
+      {
+        "name": "test",
+        "pass": true,
+        "tail": ""
+      }
+    ],
+    "hidden": {
+      "pass": true,
+      "tail": "hidden ok"
+    }
+  },
+  "finalCheck": {
+    "status": "NO_CHANGES",
+    "unresolved": null,
+    "checks": [],
+    "file": "/tmp/ensemble-next/verify/d15eabbd-df8b-4ae3-8d4a-fb0f390b53c1.json"
+  },
+  "rework": {
+    "hookBlocks": 0,
+    "questions": 0
+  },
+  "time": {
+    "durationS": 54.0,
+    "firstChangeS": null
+  },
+  "usage": {
+    "since": "2026-10-30T02:40:41.774Z",
+    "claude": {
+      "messages": 6,
+      "tokens": {
+        "input_tokens": 12,
+        "cache_creation_input_tokens": 28872,
+        "cache_read_input_tokens": 280871,
+        "output_tokens": 2784,
+        "total": 312539
+      },
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "sessions": [
+        "d15eabbd-df8b-4ae3-8d4a-fb0f390b53c1"
+      ],
+      "sidechainMessages": 0,
+      "hookBlocks": 0,
+      "projectDir": "/home/user/.claude/projects/-tmp-ensemble-next-bench-T4-B-r2-20261030T024040Z-work"
+    },
+    "codex": {
+      "lead": [],
+      "probes": [],
+      "reviewer": [
+        {
+          "originator": "codex_exec",
+          "model": "gpt-6.1-sol",
+          "file": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-41-45-01a18aaf-486c-7932-bafb-ad808c3c56a0.jsonl",
+          "input": 25345,
+          "cachedInput": 0,
+          "output": 298,
+          "reasoning": 122,
+          "total": 25643
+        }
+      ],
+      "leadTotal": 0,
+      "reviewerTotal": 25643,
+      "models": [
+        "gpt-6.1-sol"
+      ]
+    }
+  },
+  "codexLimits": {
+    "before": {
+      "primaryUsedPercent": 10.0,
+      "secondaryUsedPercent": 10.0,
+      "primaryResetsAt": 1793344892,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-40-23-01a18aae-04e8-72e1-8d78-a4bcb59fa881.jsonl"
+    },
+    "after": {
+      "primaryUsedPercent": 10.0,
+      "secondaryUsedPercent": 10.0,
+      "primaryResetsAt": 1793344892,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-40-23-01a18aae-04e8-72e1-8d78-a4bcb59fa881.jsonl"
+    }
+  },
+  "messages": {
+    "senders": [
+      "claude-1"
+    ],
+    "total": 2,
+    "byType": {
+      "chat": 1,
+      "result": 1
+    },
+    "chars": 1157,
+    "questions": 0,
+    "returnStatus": "NEEDS_DECISION",
+    "readyClaims": 0
+  },
+  "review": {
+    "verdict": "CHANGES_REQUESTED",
+    "blind": true,
+    "criteria": {
+      "met": 2,
+      "not met": 0,
+      "not verifiable": 2
+    },
+    "blockers": 0,
+    "file": "/tmp/ensemble-next-bench/T4-B-r2-20261030T024040Z/review/verdict.txt"
+  },
+  "collectedAt": "2026-10-30T02:41:58.197415Z"
+}

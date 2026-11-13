@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Runtime data
+*.log
+/tmp/
+.ensemble-data/
+.npm-cache/
+
+# JSONL persistence files (local data)
+*.jsonl
+
+# === safe-sweep DR excludes ===
+# Secrets — NOOIT naar remote
+.env
+.env.*
+*.env
+!.env.example
+!.env.sample
+!*.env.example
+.dev.vars
+*.pem
+*.key
+!*.pub
+private.key
+secrets/
+*secret*.env
+credentials.json
+.local-secrets/
+# Build / cache / artifacts (zitten in restic, niet in git)
+node_modules/
+.next/
+dist/
+build/
+.wrangler/
+.turbo/
+DerivedData/
+Pods/
+*.xcframework/
+.local-build/
+.local-secrets/
+voiceink-backups/
+# Grote binaries
+*.dmg
+*.tar.gz
+*.zip
+*.mp4
+*.wav
+*.bin
+*.sst
+*.pack
+
+# Python bytecode of bench/
+__pycache__/
+skill/evals/results/
+
+# Local copy of the skill with this machine's absolute paths (written by the setup script)
+.claude/skills/collab-next/

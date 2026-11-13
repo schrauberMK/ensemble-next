@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Block AI session transcripts from entering the repository.
+#
+# The commit-msg hook next to this one strips session links out of commit messages. This one
+# covers the other half: the files themselves. A transcript is a full record of a working
+# session, so it can contain paths, hostnames, credentials read out loud, customer names and
+# half-finished thoughts that nobody reviewed for publication.
+#
+# History: on 2026-08-11 ten commits carrying session URLs reached this public repo. Rewriting
+# history only half worked, because forks share an object store and the old commits stayed
+# reachable through any of the 28 forks. Nothing here is recoverable after a push, which is why
+# this refuses rather than warns.
+set -euo pipefail
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$STAGED" ] && exit 0
+
+FAILED=0
+note() { printf '\033[91mpre-commit:\033[0m %s\n' "$*" >&2; FAILED=1; }
+
+# 1. Files that are transcripts by name or location.
+while IFS= read -r file; do
+  case "$file" in
+    *.claude/projects/*|*claude-transcript*|*session-transcript*|*conversation-log*)
+      note "$file looks like a session transcript" ;;
+    *.jsonl)
+      # Message feeds are legitimate; a Claude Code transcript is not. Tell them apart by
+      # content rather than by name.
+      if git show ":$file" 2>/dev/null | head -5 | grep -q '"type":"\(user\|assistant\)"'; then
+        note "$file looks like a Claude Code transcript (user/assistant records)"
+      fi ;;
+  esac
+done <<< "$STAGED"
+
+# 2. Session links in the content of any staged file.
+# Regel voor regel, net als de controle hierboven: een gewone for-lus splitst
+# op spaties, waardoor een bestandsnaam met een spatie erin ongezien langs
+# deze scan glipt.
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  if git show ":$file" 2>/dev/null | grep -qE 'claude\.ai/code/session_[A-Za-z0-9]{10,}'; then
+    note "$file contains a claude.ai session link"
+  fi
+done <<< "$STAGED"
+
+# 3. Optional private words, checked only in added lines of the staged diff.
+PRIVATE_WORDS=${ENSEMBLE_PRIVE_WOORDEN:-$HOME/.config/ensemble/prive-woorden.txt}
+if [ -f "$PRIVATE_WORDS" ]; then
+  word_number=0
+  while IFS= read -r word || [ -n "$word" ]; do
+    word=${word%$'\r'}
+    [[ "$word" =~ ^[[:space:]]*$ || "$word" == \#* ]] && continue
+    word_number=$((word_number + 1))
+    while IFS= read -r file; do
+      [ -n "$file" ] || continue
+      while IFS= read -r line_number; do
+        note "$file:$line_number: privé-woord nr $word_number uit je lijst"
+      done < <(git diff --cached -U0 --text --no-ext-diff -- "$file" | LC_ALL=C tr -d '\000' | ENSEMBLE_NEEDLE="$word" awk '
+        BEGIN { needle = tolower(ENVIRON["ENSEMBLE_NEEDLE"]) }
+        /^@@ / {
+          match($0, /\+[0-9]+/)
+          line = substr($0, RSTART + 1, RLENGTH - 1) + 0
+          in_hunk = 1
+          next
+        }
+        in_hunk && /^\+/ {
+          if (index(tolower(substr($0, 2)), needle)) print line
+          line++
+          next
+        }
+        in_hunk && /^ / { line++ }
+      ')
+    done <<< "$STAGED"
+  done < "$PRIVATE_WORDS"
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+  cat >&2 <<'MSG'
+
+Nothing was committed. Remove the flagged content, then commit again.
+This repository is public and its forks share an object store, so a pushed
+transcript cannot be taken back, only apologised for.
+
+To override for a file you are certain about: git commit --no-verify
+MSG
+  exit 1
+fi

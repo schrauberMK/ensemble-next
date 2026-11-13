@@ -1,0 +1,142 @@
+{
+  "runId": "T1-B-r1-20261029T212943Z",
+  "task": "T1",
+  "variant": "B",
+  "rep": 1,
+  "status": "finished",
+  "dryRun": false,
+  "teamId": "700d8920-af35-46fb-81bf-6eae09bcb89a",
+  "teamName": "collabnext-1793309384751-2063",
+  "ensembleNextCommit": "65e3543f53992ec5a017e7f21e0e958772be6e98",
+  "ensembleNextDirty": true,
+  "quality": {
+    "hiddenPass": true,
+    "visiblePass": true,
+    "guardIntact": true,
+    "scopeViolation": false,
+    "escalationExpected": false,
+    "escalationCorrect": null,
+    "falseEscalation": false,
+    "readyWithoutPass": true,
+    "verdict": "CHANGES_REQUESTED",
+    "aborted": false,
+    "invalid": null
+  },
+  "changes": {
+    "files": [
+      "src/paginate.js"
+    ],
+    "outOfScope": [],
+    "guardBroken": [],
+    "commits": []
+  },
+  "checks": {
+    "visible": [
+      {
+        "name": "test",
+        "pass": true,
+        "tail": ""
+      }
+    ],
+    "hidden": {
+      "pass": true,
+      "tail": "hidden ok"
+    }
+  },
+  "finalCheck": null,
+  "rework": {
+    "hookBlocks": 0,
+    "questions": 0
+  },
+  "time": {
+    "durationS": 39.0,
+    "firstChangeS": 20.0
+  },
+  "usage": {
+    "since": "2026-10-29T21:29:44.806Z",
+    "claude": {
+      "messages": 6,
+      "tokens": {
+        "input_tokens": 12,
+        "cache_creation_input_tokens": 28515,
+        "cache_read_input_tokens": 281658,
+        "output_tokens": 2045,
+        "total": 312230
+      },
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "sessions": [
+        "1de6aab0-6f17-4f58-ba52-d0936d4b942a"
+      ],
+      "sidechainMessages": 0,
+      "hookBlocks": 0,
+      "projectDir": "/home/user/.claude/projects/-tmp-ensemble-next-bench-T1-B-r1-20261029T212943Z-work"
+    },
+    "codex": {
+      "lead": [],
+      "probes": [],
+      "reviewer": [
+        {
+          "originator": "codex_exec",
+          "model": "gpt-6.1-sol",
+          "file": "/home/user/.codex/sessions/2026/10/29/rollout-2026-10-29T22-30-30-01a18992-53f0-76e2-b75e-dc2bd0649c28.jsonl",
+          "input": 23112,
+          "cachedInput": 7168,
+          "output": 369,
+          "reasoning": 189,
+          "total": 23481
+        }
+      ],
+      "leadTotal": 0,
+      "reviewerTotal": 23481,
+      "models": [
+        "gpt-6.1-sol"
+      ]
+    }
+  },
+  "codexLimits": {
+    "before": {
+      "primaryUsedPercent": 1.0,
+      "secondaryUsedPercent": 3.0,
+      "primaryResetsAt": 1793326761,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/29/rollout-2026-10-29T22-29-28-01a18991-5e6f-75b3-a691-ecc454c8d87d.jsonl"
+    },
+    "after": {
+      "primaryUsedPercent": 1.0,
+      "secondaryUsedPercent": 3.0,
+      "primaryResetsAt": 1793326761,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/29/rollout-2026-10-29T22-29-28-01a18991-5e6f-75b3-a691-ecc454c8d87d.jsonl"
+    }
+  },
+  "messages": {
+    "senders": [
+      "claude-1"
+    ],
+    "total": 2,
+    "byType": {
+      "chat": 1,
+      "result": 1
+    },
+    "chars": 697,
+    "questions": 0,
+    "returnStatus": "READY_FOR_REVIEW",
+    "readyClaims": 1
+  },
+  "review": {
+    "verdict": "CHANGES_REQUESTED",
+    "blind": true,
+    "criteria": {
+      "met": 4,
+      "not met": 0,
+      "not verifiable": 1
+    },
+    "blockers": 0,
+    "file": "/tmp/ensemble-next-bench/T1-B-r1-20261029T212943Z/review/verdict.txt"
+  },
+  "collectedAt": "2026-10-29T21:30:45.734453Z"
+}

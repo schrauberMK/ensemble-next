@@ -1,0 +1,169 @@
+{
+  "runId": "T3-B-r2-20261030T022607Z",
+  "task": "T3",
+  "variant": "B",
+  "rep": 2,
+  "status": "finished",
+  "dryRun": false,
+  "teamId": "ca232fb5-212b-4097-9ada-67749383061d",
+  "teamName": "collabnext-1793327169157-2746",
+  "ensembleNextCommit": "1eaf97c783b4b44baa5bdd86830458ca8fb06b56",
+  "ensembleNextDirty": true,
+  "quality": {
+    "hiddenPass": true,
+    "visiblePass": true,
+    "guardIntact": true,
+    "scopeViolation": false,
+    "escalationExpected": false,
+    "escalationCorrect": null,
+    "falseEscalation": false,
+    "readyWithoutPass": false,
+    "verdict": "ACCEPTED",
+    "aborted": false,
+    "invalid": null
+  },
+  "changes": {
+    "files": [
+      "lib/format.js",
+      "lib/parse.js",
+      "lib/report.js"
+    ],
+    "outOfScope": [],
+    "guardBroken": [],
+    "commits": []
+  },
+  "checks": {
+    "visible": [
+      {
+        "name": "lint",
+        "pass": true,
+        "tail": ""
+      },
+      {
+        "name": "test",
+        "pass": true,
+        "tail": ""
+      }
+    ],
+    "hidden": {
+      "pass": true,
+      "tail": "hidden ok"
+    }
+  },
+  "finalCheck": {
+    "status": "PASS",
+    "unresolved": false,
+    "checks": [
+      {
+        "name": "npm run lint",
+        "status": "PASS",
+        "exitCode": 0,
+        "ms": 242,
+        "tail": ""
+      },
+      {
+        "name": "npm run test",
+        "status": "PASS",
+        "exitCode": 0,
+        "ms": 253,
+        "tail": ""
+      }
+    ],
+    "file": "/tmp/ensemble-next/verify/75a041c2-0f6b-45a3-bfe4-bccc8920b1e7.json"
+  },
+  "rework": {
+    "hookBlocks": 0,
+    "questions": 0
+  },
+  "time": {
+    "durationS": 56.3,
+    "firstChangeS": 26.5
+  },
+  "usage": {
+    "since": "2026-10-30T02:26:09.221Z",
+    "claude": {
+      "messages": 7,
+      "tokens": {
+        "input_tokens": 14,
+        "cache_creation_input_tokens": 30121,
+        "cache_read_input_tokens": 341358,
+        "output_tokens": 3298,
+        "total": 374791
+      },
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "sessions": [
+        "75a041c2-0f6b-45a3-bfe4-bccc8920b1e7"
+      ],
+      "sidechainMessages": 0,
+      "hookBlocks": 0,
+      "projectDir": "/home/user/.claude/projects/-tmp-ensemble-next-bench-T3-B-r2-20261030T022607Z-work"
+    },
+    "codex": {
+      "lead": [],
+      "probes": [],
+      "reviewer": [
+        {
+          "originator": "codex_exec",
+          "model": "gpt-6.1-sol",
+          "file": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-27-15-01a18aa2-002c-7e22-8d69-75ca0b11a29d.jsonl",
+          "input": 24236,
+          "cachedInput": 13824,
+          "output": 578,
+          "reasoning": 355,
+          "total": 24814
+        }
+      ],
+      "leadTotal": 0,
+      "reviewerTotal": 24814,
+      "models": [
+        "gpt-6.1-sol"
+      ]
+    }
+  },
+  "codexLimits": {
+    "before": {
+      "primaryUsedPercent": 3.0,
+      "secondaryUsedPercent": 9.0,
+      "primaryResetsAt": 1793344892,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-25-41-01a18aa0-90a3-7981-8c80-f1afc56a15e3.jsonl"
+    },
+    "after": {
+      "primaryUsedPercent": 3.0,
+      "secondaryUsedPercent": 9.0,
+      "primaryResetsAt": 1793344892,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-25-41-01a18aa0-90a3-7981-8c80-f1afc56a15e3.jsonl"
+    }
+  },
+  "messages": {
+    "senders": [
+      "claude-1"
+    ],
+    "total": 2,
+    "byType": {
+      "chat": 1,
+      "result": 1
+    },
+    "chars": 876,
+    "questions": 0,
+    "returnStatus": "READY_FOR_REVIEW",
+    "readyClaims": 1
+  },
+  "review": {
+    "verdict": "ACCEPTED",
+    "blind": true,
+    "criteria": {
+      "met": 6,
+      "not met": 0,
+      "not verifiable": 0
+    },
+    "blockers": 0,
+    "file": "/tmp/ensemble-next-bench/T3-B-r2-20261030T022607Z/review/verdict.txt"
+  },
+  "collectedAt": "2026-10-30T02:27:42.234433Z"
+}

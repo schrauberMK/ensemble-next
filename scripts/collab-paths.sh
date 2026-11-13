@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+# Shared runtime paths for collab infrastructure.
+
+collab_runtime_root() {
+  local root="${COLLAB_RUNTIME_ROOT:-/tmp/ensemble-next}"
+  root="${root#"${root%%[![:space:]]*}"}"
+  root="${root%"${root##*[![:space:]]}"}"
+  printf '%s' "${root:-/tmp/ensemble-next}"
+}
+
+collab_runtime_dir() {
+  local team_id="${1:?team id required}"
+  printf '%s/%s\n' "$(collab_runtime_root)" "$team_id"
+}
+
+collab_ensure_runtime_dir() {
+  local team_id="${1:?team id required}"
+  local dir
+  dir="$(collab_runtime_dir "$team_id")"
+  mkdir -p -m 700 "$dir"
+  chmod 700 "$dir"
+  printf '%s\n' "$dir"
+}
+
+collab_messages_file() {
+  local team_id="${1:?team id required}"
+  printf '%s/messages.jsonl\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_read_state_file() {
+  local team_id="${1:?team id required}" reader="${2:?reader required}"
+  printf '%s/read-state/%s.seen\n' "$(collab_runtime_dir "$team_id")" "${reader//[^a-zA-Z0-9_.-]/}"
+}
+
+collab_heartbeat_file() {
+  local team_id="${1:?team id required}" agent="${2:?agent required}"
+  printf '%s/alive/%s\n' "$(collab_runtime_dir "$team_id")" "${agent//[^a-zA-Z0-9_.-]/}"
+}
+
+collab_summary_file() {
+  local team_id="${1:?team id required}"
+  printf '%s/summary.txt\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_bridge_pid() {
+  local team_id="${1:?team id required}"
+  printf '%s/bridge.pid\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_bridge_log() {
+  local team_id="${1:?team id required}"
+  printf '%s/bridge.log\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_poller_pid() {
+  local team_id="${1:?team id required}"
+  printf '%s/poller.pid\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_feed_file() {
+  local team_id="${1:?team id required}"
+  printf '%s/feed.txt\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_prompt_file() {
+  local team_id="${1:?team id required}"
+  local agent_name="${2:?agent name required}"
+  printf '%s/prompts/%s.txt\n' "$(collab_runtime_dir "$team_id")" "$agent_name"
+}
+
+collab_delivery_file() {
+  local team_id="${1:?team id required}"
+  local session_name="${2:?session name required}"
+  printf '%s/delivery/%s.txt\n' "$(collab_runtime_dir "$team_id")" "$session_name"
+}
+
+collab_bridge_posted_file() {
+  local team_id="${1:?team id required}"
+  printf '%s/bridge-posted\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_bridge_result_file() {
+  local team_id="${1:?team id required}"
+  printf '%s/bridge-result\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_team_id_file() {
+  local team_id="${1:?team id required}"
+  printf '%s/team-id\n' "$(collab_runtime_dir "$team_id")"
+}
+
+collab_finished_marker() {
+  local team_id="${1:?team id required}"
+  printf '%s/.finished\n' "$(collab_runtime_dir "$team_id")"
+}
+
+# Bewijs dat een team echt leeft: minstens één regel in messages.jsonl.
+# Zonder deze functie meldde launch "Team is live!" terwijl hij net zelf had
+# vastgesteld dat er nul berichten waren.
+team_has_evidence() {
+  local rd="$1"
+  [ -s "$rd/messages.jsonl" ]
+}
+
+# Stop de achtergrondprocessen van een team. Cleanup gooide alleen de map weg,
+# waarna de bridge doorliep zonder map: dagenlang, in een lus die nooit
+# eindigt (want die lus reageerde tot voor kort ook niet op een gewoon
+# SIGTERM). Stuurt eerst TERM, wacht tot 2 seconden, escaleert dan naar KILL
+# voor de processen die dat negeren.
+#
+# Een pid-bestand kan dagen oud zijn en het besturingssysteem hergebruikt
+# pids: voor het schieten wordt de commandoregel van het proces gecontroleerd
+# op de scriptnaam die bij bridge/poller hoort. Komt die niet overeen, dan is
+# de pid vermoedelijk hergebruikt door iets anders; het pid-bestand wordt dan
+# opgeruimd zonder dat proces aan te raken.
+#
+# Zonder (geldig) pid-bestand wordt alsnog gezocht op de commandoregel: de
+# oude trap deed "rm -f $PID_FILE" op elk signaal zonder ooit te exit'en, dus
+# een kill van vóór de signaal-fix ruimde het pid-bestand op en liet het
+# proces gewoon leven. Zulke wezen zijn voor geen enkel pid-bestand-mechanisme
+# nog vindbaar. Het team-id staat letterlijk in de aanroep (ensemble-bridge.sh
+# <team-id> <url>), dus scriptnaam + team-id als los argument identificeren
+# het proces net zo streng als de pid-route hierboven.
+stop_team_processes() {
+  local rd="$1" team_id naam pid wacht verwacht cmd kandidaat_pid kandidaat_cmd
+  team_id="$(basename "$rd")"
+
+  for naam in bridge poller; do
+    case "$naam" in
+      bridge) verwacht="ensemble-bridge.sh" ;;
+      poller) verwacht="collab-poller.sh" ;;
+    esac
+
+    pid=""
+    if [ -f "$rd/$naam.pid" ]; then
+      pid=$(cat "$rd/$naam.pid" 2>/dev/null)
+      case "$pid" in ''|*[!0-9]*) rm -f "$rd/$naam.pid"; pid="" ;; esac
+    fi
+
+    if [ -n "$pid" ]; then
+      cmd=$(ps -p "$pid" -o command= 2>/dev/null)
+      case "$cmd" in
+        *"$verwacht"*) ;;
+        *) rm -f "$rd/$naam.pid"; pid="" ;;
+      esac
+    fi
+
+    if [ -z "$pid" ]; then
+      while read -r kandidaat_pid kandidaat_cmd; do
+        [ -n "$kandidaat_pid" ] || continue
+        case " $kandidaat_cmd " in
+          *"$verwacht"*" $team_id "*) pid="$kandidaat_pid" ;;
+        esac
+        [ -n "$pid" ] && break
+      done < <(ps -eo pid=,command= 2>/dev/null)
+    fi
+
+    [ -z "$pid" ] && continue
+
+    kill "$pid" 2>/dev/null || true
+    wacht=0
+    while [ "$wacht" -lt 20 ] && kill -0 "$pid" 2>/dev/null; do
+      sleep 0.1
+      wacht=$((wacht + 1))
+    done
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+    rm -f "$rd/$naam.pid"
+  done
+}

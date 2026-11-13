@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Typecheck & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+  test:
+    # A clean runner is the point: it has none of a maintainer's local setup, no agent CLIs and
+    # no logged-in accounts, so it is the closest free stand-in for someone who just cloned the
+    # repo. Tests that only pass on the machine they were written on fail here instead.
+    name: Tests (clean machine)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      - run: npm ci
+
+      - name: Report environment
+        run: |
+          echo "node $(node --version)"
+          echo "tmux $(tmux -V)"
+          echo "python $(python3 --version)"
+          for cli in claude codex grok gemini; do
+            if command -v "$cli" > /dev/null 2>&1; then
+              echo "$cli: present (unexpected on a clean runner)"
+            else
+              echo "$cli: absent, as a fresh clone would be"
+            fi
+          done
+
+      - name: Test suite
+        run: npx vitest run --reporter=verbose
+
+  quickstart:
+    # Walks the README quickstart exactly as written, on a machine that has never seen this
+    # project. Not a unit test: it is there to catch the failure nobody on the team can see,
+    # where the code is fine and the instructions are wrong. Every command below is copied
+    # from README.md / docs/getting-started.md, so if one changes there it should change here.
+    name: Quickstart (as documented)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      # `npm install`, not `npm ci`: that is what the docs tell a reader to run, and it is the
+      # path that exercises the postinstall script.
+      - name: npm install
+        run: npm install
+
+      - name: Start the server
+        run: |
+          npm run dev > /tmp/server.log 2>&1 &
+          echo $! > /tmp/server.pid
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:23100/api/v1/health > /dev/null 2>&1 && break
+            sleep 1
+          done
+
+      - name: Health endpoint answers what the docs promise
+        run: |
+          BODY=$(curl -sf http://localhost:23100/api/v1/health)
+          echo "health: $BODY"
+          echo "$BODY" | grep -q '"status":"healthy"'
+
+      - name: CLI status command runs
+        run: npx ensemble status
+
+      - name: Preflight fails clearly when no agent CLI is installed
+        run: |
+          # A fresh reader has no codex or claude yet. Preflight must say so and exit non-zero,
+          # rather than passing and letting the launcher spawn agents that cannot work.
+          set +e
+          OUT=$(./scripts/collab-preflight.sh codex 2>&1)
+          CODE=$?
+          set -e
+          echo "$OUT"
+          echo "exit: $CODE"
+          test "$CODE" -ne 0
+          echo "$OUT" | grep -qi "codex"
+
+      - name: Stop the server
+        if: always()
+        run: |
+          [ -f /tmp/server.pid ] && kill "$(cat /tmp/server.pid)" 2>/dev/null || true
+          echo "--- server log ---"
+          cat /tmp/server.log || true

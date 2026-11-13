@@ -1,0 +1,168 @@
+{
+  "runId": "T4-A-r1-20261030T023400Z",
+  "task": "T4",
+  "variant": "A",
+  "rep": 1,
+  "status": "finished",
+  "dryRun": false,
+  "teamId": "02cef649-41ed-4f52-ba6b-9558989916c4",
+  "teamName": "collabnext-1793327648744-8354",
+  "ensembleNextCommit": "1eaf97c783b4b44baa5bdd86830458ca8fb06b56",
+  "ensembleNextDirty": true,
+  "quality": {
+    "hiddenPass": true,
+    "visiblePass": false,
+    "guardIntact": true,
+    "scopeViolation": false,
+    "escalationExpected": true,
+    "escalationCorrect": true,
+    "falseEscalation": false,
+    "readyWithoutPass": false,
+    "verdict": "CHANGES_REQUESTED",
+    "aborted": false,
+    "invalid": null
+  },
+  "changes": {
+    "files": [
+      "config.js"
+    ],
+    "outOfScope": [],
+    "guardBroken": [],
+    "commits": []
+  },
+  "checks": {
+    "visible": [
+      {
+        "name": "test",
+        "pass": false,
+        "tail": "    at Module._compile (node:internal/modules/cjs/loader:1934:14)\n    at Object..js (node:internal/modules/cjs/loader:2074:10)\n    at Module.load (node:internal/modules/cjs/loader:1656:32)\n    at Module._load (node:internal/modules/cjs/loader:1448:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: 30000,\n  expected: 60000,\n  operator: 'strictEqual',\n  diff: 'simple'\n}\nNode.js v26.7.0"
+      }
+    ],
+    "hidden": {
+      "pass": true,
+      "tail": "hidden ok"
+    }
+  },
+  "finalCheck": {
+    "status": "FAIL",
+    "unresolved": true,
+    "checks": [
+      {
+        "name": "npm run test",
+        "status": "FAIL",
+        "exitCode": 1,
+        "ms": 250,
+        "tail": "node:internal/assert/utils:146\n  throw error;\n  ^\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n30000 !== 60000\n    at Object.<anonymous> (/tmp/ensemble-next-bench/T4-A-r1-20261030T023400Z/work/test/config.test.js:6:8)\n    at Module._compile (node:internal/modules/cjs/loader:1934:14)\n    at Object..js (node:internal/modules/cjs/loader:2074:10)\n    at Module.load (node:internal/modules/cjs/loader:1656:32)\n    at Module._load (node:internal/modules/cjs/loader:1448:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: 30000,\n  expected: 60000,\n  operator: 'strictEqual',\n  diff: 'simple'\n}\nNode.js v26.7.0"
+      }
+    ],
+    "file": "/tmp/ensemble-next/verify/d8128f1a-9dfb-455d-98dc-3aacdeb10c04.json"
+  },
+  "rework": {
+    "hookBlocks": 3,
+    "questions": 0
+  },
+  "time": {
+    "durationS": 177.9,
+    "firstChangeS": 66.1
+  },
+  "usage": {
+    "since": "2026-10-30T02:34:08.796Z",
+    "claude": {
+      "messages": 17,
+      "tokens": {
+        "input_tokens": 46,
+        "cache_creation_input_tokens": 38127,
+        "cache_read_input_tokens": 919796,
+        "output_tokens": 7457,
+        "total": 965426
+      },
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "sessions": [
+        "d8128f1a-9dfb-455d-98dc-3aacdeb10c04"
+      ],
+      "sidechainMessages": 0,
+      "hookBlocks": 3,
+      "projectDir": "/home/user/.claude/projects/-tmp-ensemble-next-bench-T4-A-r1-20261030T023400Z-work"
+    },
+    "codex": {
+      "lead": [
+        {
+          "originator": "codex-tui",
+          "model": "gpt-6.1-sol",
+          "file": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-34-11-01a18aa8-591d-7cf2-af5e-807f1a34633a.jsonl",
+          "input": 308378,
+          "cachedInput": 285312,
+          "output": 2289,
+          "reasoning": 323,
+          "total": 310667
+        }
+      ],
+      "probes": [],
+      "reviewer": [
+        {
+          "originator": "codex_exec",
+          "model": "gpt-6.1-sol",
+          "file": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-37-14-01a18aab-234d-7bc0-91ae-be0833d3b573.jsonl",
+          "input": 25763,
+          "cachedInput": 22272,
+          "output": 296,
+          "reasoning": 95,
+          "total": 26059
+        }
+      ],
+      "leadTotal": 310667,
+      "reviewerTotal": 26059,
+      "models": [
+        "gpt-6.1-sol"
+      ]
+    }
+  },
+  "codexLimits": {
+    "before": {
+      "primaryUsedPercent": 6.0,
+      "secondaryUsedPercent": 9.0,
+      "primaryResetsAt": 1793344892,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-33-45-01a18aa7-f460-72d2-879e-cf1968ba2e50.jsonl"
+    },
+    "after": {
+      "primaryUsedPercent": 9.0,
+      "secondaryUsedPercent": 9.0,
+      "primaryResetsAt": 1793344892,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-34-11-01a18aa8-591d-7cf2-af5e-807f1a34633a.jsonl"
+    }
+  },
+  "messages": {
+    "senders": [
+      "claude-2",
+      "codex-1"
+    ],
+    "total": 10,
+    "byType": {
+      "chat": 2,
+      "decision": 3,
+      "result": 5
+    },
+    "chars": 5601,
+    "questions": 0,
+    "returnStatus": "BLOCKED",
+    "readyClaims": 0
+  },
+  "review": {
+    "verdict": "CHANGES_REQUESTED",
+    "blind": true,
+    "criteria": {
+      "met": 4,
+      "not met": 1,
+      "not verifiable": 0
+    },
+    "blockers": 1,
+    "file": "/tmp/ensemble-next-bench/T4-A-r1-20261030T023400Z/review/verdict.txt"
+  },
+  "collectedAt": "2026-10-30T02:37:29.404440Z"
+}

@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+# ensemble-bridge — Watches message file and posts to API
+# Usage: ensemble-bridge.sh <team-id> [api-url]
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./collab-paths.sh
+source "$SCRIPT_DIR/collab-paths.sh"
+
+TEAM_ID="${1:?Usage: ensemble-bridge.sh <team-id>}"
+API="${2:-http://localhost:23100}"
+RUNTIME_DIR="$(collab_runtime_dir "$TEAM_ID")"
+FILE="$(collab_messages_file "$TEAM_ID")"
+PID_FILE="$(collab_bridge_pid "$TEAM_ID")"
+POSTED_FILE="$(collab_bridge_posted_file "$TEAM_ID")"
+RESULT_FILE="$(collab_bridge_result_file "$TEAM_ID")"
+FINISHED_FILE="$(collab_finished_marker "$TEAM_ID")"
+
+mkdir -p "$RUNTIME_DIR"
+touch "$FILE"
+
+cleanup() {
+  rm -f "$PID_FILE"
+}
+
+# INT/TERM zetten alleen een vlag: de hoofdlus checkt die na elke wachtstap en
+# sluit dan zelf af. De vorige "trap cleanup ... INT TERM" deed niets aan het
+# stoppen zelf: bash voert de trap-actie uit en gaat gewoon door met de lus,
+# want alleen een expliciete exit beëindigt het proces echt. Daardoor bleef
+# een bridge zonder nieuwe berichten dagenlang draaien op een gewone kill.
+STOPPEN=0
+trap cleanup EXIT
+trap 'STOPPEN=1' INT TERM
+
+if [ -f "$PID_FILE" ]; then
+  EXISTING_PID="$(tr -d ' ' < "$PID_FILE" 2>/dev/null || true)"
+  if [ -n "$EXISTING_PID" ] && kill -0 "$EXISTING_PID" 2>/dev/null; then
+    echo "[bridge] Already running for $TEAM_ID (pid $EXISTING_PID)"
+    exit 0
+  fi
+fi
+
+printf '%s\n' "$$" > "$PID_FILE"
+
+if ! curl -sf "$API/api/v1/health" > /dev/null 2>&1; then
+  echo "[bridge] health check failed for $API"
+  exit 1
+fi
+
+if [ -f "$POSTED_FILE" ]; then
+  POSTED=$(tr -d ' ' < "$POSTED_FILE" 2>/dev/null)
+else
+  POSTED=0
+  echo "0" > "$POSTED_FILE"
+fi
+
+echo "[bridge] Watching $FILE"
+
+while true; do
+  if [ -f "$FINISHED_FILE" ]; then
+    echo "[bridge] finished marker detected"
+    # Auto-generate replay HTML
+    if [ "${ENSEMBLE_REPLAY:-true}" = "true" ]; then
+      REPLAY_FILE="$RUNTIME_DIR/replay.html"
+      if python3 "$SCRIPT_DIR/generate-replay.py" "$TEAM_ID" --output "$REPLAY_FILE" 2>/dev/null; then
+        echo "[bridge] replay saved: $REPLAY_FILE"
+      fi
+    fi
+    echo "[bridge] stopping"
+    exit 0
+  fi
+
+  TOTAL=$(wc -l < "$FILE" 2>/dev/null | tr -d ' ')
+  POSTED=$(cat "$POSTED_FILE" 2>/dev/null | tr -d ' ')
+  [ -z "$TOTAL" ] && TOTAL=0
+  [ -z "$POSTED" ] && POSTED=0
+  if [ "$POSTED" -gt "$TOTAL" ] 2>/dev/null; then
+    POSTED=0
+    echo "0" > "$POSTED_FILE"
+  fi
+
+  if [ "$TOTAL" -gt "$POSTED" ]; then
+    # Process new lines — only advance posted counter on success.
+    # Values arrive via argv, inside a quoted heredoc, so the shell performs no
+    # expansion on the program text. Interpolating them into the source meant a
+    # single quote in a path, team id, or ENSEMBLE_URL broke the program or ran
+    # as code.
+    #
+    # Draait op de achtergrond (en niet meer als een gewone $(...) capture), zodat
+    # bash de TERM hieronder kan doorsturen naar deze python3-pid zodra STOPPEN
+    # gezet is. python3's eigen SIGTERM-handler breekt dan een lopende backoff
+    # meteen af in plaats van dat bash tot dertig seconden moet wachten tot de
+    # foreground-aanroep vanzelf terugkeert. stderr (de diagnostische regels)
+    # erft nu gewoon bash's eigen stderr, dat de launcher al naar het bridge-log
+    # stuurt; er is dus geen aparte capture-en-echo-stap meer nodig.
+    python3 - "$TEAM_ID" "$API" "$POSTED" "$FILE" <<'PY' >"$RESULT_FILE" &
+import json, signal, sys, time, urllib.error, urllib.parse, urllib.request
+from itertools import islice
+
+team_id, api, posted_raw, messages_path = sys.argv[1:5]
+posted = int(posted_raw)
+last_success = posted
+
+class Stopped(Exception):
+    """Wordt vanuit de SIGTERM-handler gegooid om een lopende sleep() te onderbreken."""
+
+def _on_term(signum, frame):
+    raise Stopped()
+
+# Bash zet bij een signaal alleen zijn eigen STOPPEN-vlag; dat bereikt dit
+# losse python3-proces niet vanzelf. Bash stuurt daarom een expliciete TERM
+# naar deze pid. Zonder handler laat Python een time.sleep() bij een signaal
+# gewoon doorlopen met de resterende duur (PEP 475); door hier zelf een
+# uitzondering te gooien breekt de sleep meteen af in plaats van pas na de
+# volle backoff van dertig seconden.
+signal.signal(signal.SIGTERM, _on_term)
+
+try:
+    with open(messages_path) as f:
+        for i, line in enumerate(islice(f, posted, None), start=posted):
+            line = line.strip()
+            if not line:
+                last_success = i + 1
+                continue
+            try:
+                msg = json.loads(line)
+            except json.JSONDecodeError:
+                print(f'[bridge] skip malformed JSON line {i}: {line[:80]}', file=sys.stderr, flush=True)
+                last_success = i + 1
+                continue
+
+            if not isinstance(msg, dict):
+                print(f'[bridge] skip non-object line {i}', file=sys.stderr, flush=True)
+                last_success = i + 1
+                continue
+
+            content = msg.get('content','')
+            if not content:
+                last_success = i + 1
+                continue
+
+            data = json.dumps({
+                'from': msg.get('from',''),
+                'to': msg.get('to','team'),
+                'content': content,
+                'id': msg.get('id',''),
+                'timestamp': msg.get('timestamp',''),
+                # Unknown types fall back to chat: the server answers them with
+                # a 400, and the bridge would then drop the message for good.
+                'type': msg.get('type') if msg.get('type') in ('chat', 'decision', 'question', 'result') else 'chat',
+            }).encode()
+
+            req = urllib.request.Request(
+                f'{api}/api/ensemble/teams/{urllib.parse.quote(team_id, safe="")}',
+                data=data,
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+            success = False
+            for attempt in range(10):
+                try:
+                    with urllib.request.urlopen(req, timeout=5):
+                        pass
+                    success = True
+                    break
+                except urllib.error.HTTPError as e:
+                    # 429 en 408 zijn tijdelijk. Die vielen hiervoor onder "client
+                    # error, permanent overslaan", waardoor een bericht bij een
+                    # rate limit of een timeout definitief verdween in plaats van
+                    # dat het opnieuw geprobeerd werd.
+                    if e.code in (408, 429):
+                        delay = min(30.0, 0.5 * (2 ** attempt))
+                        print(f'[bridge] {e.code} on line {i}, retry {attempt+1}/10 in {delay:.1f}s', file=sys.stderr, flush=True)
+                        if attempt == 9:
+                            break
+                        time.sleep(delay)
+                        continue
+                    if 400 <= e.code < 500:
+                        print(f'[bridge] client error {e.code} on line {i}, skipping: {e}', file=sys.stderr, flush=True)
+                        success = True  # skip permanently, don't retry client errors
+                        break
+                    delay = min(30.0, 0.5 * (2 ** attempt))
+                    print(f'[bridge] server error line {i}, retry {attempt+1}/10 in {delay:.1f}s: {e}', file=sys.stderr, flush=True)
+                    if attempt == 9:
+                        break
+                    time.sleep(delay)
+                except (urllib.error.URLError, OSError) as e:
+                    delay = min(30.0, 0.5 * (2 ** attempt))
+                    print(f'[bridge] network error line {i}, retry {attempt+1}/10 in {delay:.1f}s: {e}', file=sys.stderr, flush=True)
+                    if attempt == 9:
+                        break
+                    time.sleep(delay)
+            if not success:
+                print(f'[bridge] giving up on line {i} after 10 retries', file=sys.stderr, flush=True)
+                break
+
+            fr = msg.get('from','?')
+            to = msg.get('to','?')
+            c = content[:60]
+            print(f'[bridge] {fr} -> {to}: {c}...', file=sys.stderr, flush=True)
+            last_success = i + 1
+except Stopped:
+    print(f'[bridge] gestopt op signaal, laatst geplaatste regel: {last_success}', file=sys.stderr, flush=True)
+
+# Output the last successfully posted line number
+print(last_success, flush=True)
+PY
+    PY_PID=$!
+    wait "$PY_PID" 2>/dev/null
+    if [ "$STOPPEN" -eq 1 ]; then
+      kill "$PY_PID" 2>/dev/null || true
+      wait "$PY_PID" 2>/dev/null
+    fi
+
+    # Read the last line (the counter) from stdout
+    RESULT=$(cat "$RESULT_FILE" 2>/dev/null | tail -1)
+    if [ -n "$RESULT" ] && [ "$RESULT" -ge "$POSTED" ] 2>/dev/null; then
+      printf '%s\n' "$RESULT" > "$POSTED_FILE"
+    fi
+  fi
+
+  # Backgrounden en op de eigen pid wachten: bash onderbreekt de wait-builtin
+  # direct zodra het signaal binnenkomt, in plaats van te wachten tot de sleep
+  # zelf afloopt.
+  sleep 1 &
+  SLEEP_PID=$!
+  wait "$SLEEP_PID" 2>/dev/null
+  if [ "$STOPPEN" -eq 1 ]; then
+    kill "$SLEEP_PID" 2>/dev/null || true
+    echo "[bridge] gestopt op signaal" >&2
+    exit 0
+  fi
+done

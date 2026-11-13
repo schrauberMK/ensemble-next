@@ -1,0 +1,446 @@
+import fs from 'fs'
+import path from 'path'
+import { v4 as uuidv4 } from 'uuid'
+import { isShellCommand, type AgentRuntime } from './agent-runtime'
+import type { EnsembleMessage, EnsembleTeam, EnsembleTeamAgent } from '../types/ensemble'
+
+const DEFAULT_POLL_INTERVAL_MS = 30_000
+const DEFAULT_NUDGE_MS = 90_000
+const DEFAULT_STALL_MS = 180_000
+const WATCHDOG_NUDGE_TEXT = 'Are you still working? Share your progress with team-say.'
+
+/**
+ * How many consecutive failed nudges before we conclude the agent is gone.
+ *
+ * A nudge fails when its tmux session no longer exists ("Command failed: tmux
+ * send-keys"). Before this limit existed the failure path never recorded
+ * `nudgedAt`, so every poll saw a never-nudged agent and tried again, forever.
+ * Measured on 2026-08-14: 45.088 failed nudges across 7 teams, 48% of the entire
+ * message archive, one team at 21.934. None of those 7 teams ever produced a
+ * summary, so the user never saw the outcome of that work.
+ */
+const DEFAULT_MAX_FAILED_NUDGES = 3
+
+/**
+ * How many nudges an agent may receive in total before we leave it alone.
+ *
+ * The failed-nudge limit above only covers agents whose session is gone. An
+ * agent that is still there answers the nudge, which resets `lastMessageAt`, so
+ * the next silence looks like the first one and it gets nudged again. Measured
+ * on 2026-09-01: 1.434 nudges in August alone, 792 of them to a single session
+ * over one night. Every nudge is a full turn carrying the whole conversation.
+ */
+const DEFAULT_MAX_NUDGES = 5
+
+/**
+ * How long after team creation an agent without `startedAt` is left alone.
+ *
+ * Until its prompt is delivered an agent is still starting: the CLI is typed
+ * into a fresh shell, so the pane shows that shell for a while. With
+ * replacement on, the watchdog read that as "Agent CLI exited to shell" and
+ * failed every agent of a starting team; the team was then ended with "all 0
+ * agent session(s) unreachable" before it received its task (2026-10-17).
+ * `startedAt` is set on delivery; this window only covers agents whose
+ * delivery never recorded it, so they are not ignored forever.
+ */
+const DEFAULT_STARTUP_GRACE_MS = 300_000
+
+interface AgentWatchdogState {
+  lastMessageAt: string
+  nudgedAt?: string
+  stalledAt?: string
+  /** Consecutive failed nudge attempts; reset on success. */
+  failedNudges?: number
+  /** Nudges delivered to this agent; survives incoming messages on purpose. */
+  nudgeCount?: number
+  /** Set once the nudge budget ran out, so we say it once and then stay quiet. */
+  nudgeBudgetSpentAt?: string
+  /** Set once we gave up on this agent, so we stop retrying and stop logging. */
+  unreachableAt?: string
+}
+
+interface AgentWatchdogDeps {
+  replacementEnabled?: () => boolean
+  sessionExists?: (name: string, hostId?: string) => Promise<boolean | undefined>
+  replaceAgent?: (team: EnsembleTeam, agent: EnsembleTeamAgent, detail: string) => Promise<boolean>
+  onAgentStalled?: (team: EnsembleTeam, agent: EnsembleTeamAgent, detail: string) => void
+  loadTeams: () => EnsembleTeam[]
+  markAgentFailed?: (teamId: string, agentName: string) => void
+  getMessages: (teamId: string) => EnsembleMessage[]
+  /**
+   * Last heartbeat of an agent (team-alive.sh). Counts as activity like a message,
+   * so an agent can work silently for long stretches without flooding the feed.
+   */
+  getHeartbeatAt?: (teamId: string, agentName: string) => string | undefined
+  appendMessage: (teamId: string, message: EnsembleMessage) => void
+  getRuntime: () => Pick<AgentRuntime, 'sendKeys' | 'pasteFromFile' | 'getForegroundCommand'>
+  resolveAgentProgram: (program: string) => { inputMethod: 'pasteFromFile' | 'sendKeys'; bracketedPaste?: boolean }
+  isSelf: (hostId?: string) => boolean
+  getHostById: (hostId: string) => { url: string } | undefined
+  postRemoteSessionCommand: (url: string, sessionName: string, text: string) => Promise<void>
+  collabDeliveryFile: (teamId: string, sessionName: string) => string
+  /**
+   * Called when every active agent of a team has become unreachable. Lets the
+   * service end the team properly instead of leaving it 'active' forever with a
+   * bridge that keeps polling a dead session.
+   */
+  onTeamUnreachable?: (teamId: string, reason: string) => void | Promise<void>
+  now?: () => number
+  nudgeAfterMs?: number
+  stallAfterMs?: number
+  pollIntervalMs?: number
+  maxFailedNudges?: number
+  maxNudges?: number
+  startupGraceMs?: number
+}
+
+function parseDuration(rawValue: string | undefined, fallback: number): number {
+  const parsed = Number(rawValue)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+export function getWatchdogNudgeMs(): number {
+  return parseDuration(process.env.ENSEMBLE_WATCHDOG_NUDGE_MS, DEFAULT_NUDGE_MS)
+}
+
+export function getWatchdogStallMs(): number {
+  return parseDuration(process.env.ENSEMBLE_WATCHDOG_STALL_MS, DEFAULT_STALL_MS)
+}
+
+export function getWatchdogMaxNudges(): number {
+  return parseDuration(process.env.ENSEMBLE_WATCHDOG_MAX_NUDGES, DEFAULT_MAX_NUDGES)
+}
+
+export class AgentWatchdog {
+  private polling = false
+  private readonly state = new Map<string, AgentWatchdogState>()
+  private readonly remoteAbsences = new Map<string, number>()
+  private readonly timer: NodeJS.Timeout
+  private readonly now: () => number
+  private readonly nudgeAfterMs: number
+  private readonly stallAfterMs: number
+  private readonly maxFailedNudges: number
+  private readonly maxNudges: number
+  private readonly startupGraceMs: number
+
+  constructor(private readonly deps: AgentWatchdogDeps) {
+    this.now = deps.now ?? Date.now
+    this.nudgeAfterMs = deps.nudgeAfterMs ?? getWatchdogNudgeMs()
+    this.stallAfterMs = deps.stallAfterMs ?? getWatchdogStallMs()
+    this.maxFailedNudges = deps.maxFailedNudges ?? DEFAULT_MAX_FAILED_NUDGES
+    this.maxNudges = deps.maxNudges ?? getWatchdogMaxNudges()
+    this.startupGraceMs = deps.startupGraceMs ?? DEFAULT_STARTUP_GRACE_MS
+
+    this.timer = setInterval(() => {
+      void this.poll()
+    }, deps.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS)
+    this.timer.unref()
+  }
+
+  async poll(): Promise<void> {
+    if (this.polling) return
+    this.polling = true
+    try {
+      const activeTeams = this.deps.loadTeams().filter(team => team.status === 'active')
+      const activeTeamIds = new Set(activeTeams.map(team => team.id))
+
+      for (const key of this.state.keys()) {
+        const teamId = key.split(':', 1)[0]
+        if (!activeTeamIds.has(teamId)) {
+          this.state.delete(key)
+        }
+      }
+      for (const key of this.remoteAbsences.keys()) {
+        if (!activeTeamIds.has(key.split(':', 1)[0])) this.remoteAbsences.delete(key)
+      }
+
+      await Promise.all(activeTeams.map(async team => {
+        try {
+          await this.pollTeam(team)
+        } catch (err) {
+          console.error(`[Watchdog] Poll failed for team ${team.id}:`, err)
+        }
+      }))
+    } finally { this.polling = false }
+  }
+
+  stop(): void {
+    clearInterval(this.timer)
+    this.state.clear()
+    this.remoteAbsences.clear()
+  }
+
+  private async pollTeam(team: EnsembleTeam): Promise<void> {
+    const messages = this.deps.getMessages(team.id)
+    const activeAgents = team.agents.filter(candidate => candidate.status === 'active')
+    const activeAgentNames = new Set(activeAgents.map(agent => agent.name))
+
+    for (const key of this.state.keys()) {
+      if (!key.startsWith(`${team.id}:`)) continue
+      const agentName = key.slice(team.id.length + 1)
+      if (!activeAgentNames.has(agentName)) {
+        this.state.delete(key)
+      }
+    }
+    for (const key of this.remoteAbsences.keys()) {
+      if (key.startsWith(`${team.id}:`) && !activeAgentNames.has(key.slice(team.id.length + 1))) {
+        this.remoteAbsences.delete(key)
+      }
+    }
+
+    for (const agent of activeAgents) {
+      const stateKey = `${team.id}:${agent.name}`
+      // Still starting: no liveness check, no nudge, no replacement yet.
+      if (!this.hasStarted(team, agent)) continue
+      const lastAgentMessage = [...messages].reverse().find(message => message.from === agent.name)
+      if (lastAgentMessage?.content.trim() === '<<COLLAB_DONE>>') {
+        this.state.delete(stateKey)
+        this.remoteAbsences.delete(stateKey)
+        continue
+      }
+      const lastSaidAt = lastAgentMessage?.timestamp || agent.startedAt || team.createdAt
+      const heartbeatAt = this.deps.getHeartbeatAt?.(team.id, agent.name)
+      const lastMessageAt = heartbeatAt && new Date(heartbeatAt).getTime() > new Date(lastSaidAt).getTime()
+        ? heartbeatAt
+        : lastSaidAt
+      const previousState = this.state.get(stateKey)
+      if (this.deps.replacementEnabled?.() && this.deps.sessionExists) {
+        const sessionName = `${team.name}-${agent.name}`
+        const remote = Boolean(agent.hostId && !this.deps.isSelf(agent.hostId))
+        let exists: boolean | undefined
+        try { exists = await this.deps.sessionExists(sessionName, agent.hostId) } catch { exists = undefined }
+        const remoteMissingPolls = remote && exists === false
+          ? (this.remoteAbsences.get(stateKey) ?? 0) + 1 : 0
+        if (remoteMissingPolls) this.remoteAbsences.set(stateKey, remoteMissingPolls)
+        else this.remoteAbsences.delete(stateKey)
+        if (exists === false && (!remote || remoteMissingPolls >= 2)) {
+          await this.handleStall(team, agent, 'Agent session disappeared')
+          continue
+        }
+        if (remote && exists !== true) continue
+        if (!remote && exists === true) {
+          let foreground = ''
+          try { foreground = await this.deps.getRuntime().getForegroundCommand?.(sessionName) ?? '' } catch { /* unknown */ }
+          if (foreground && isShellCommand(foreground)) {
+            await this.handleStall(team, agent, 'Agent CLI exited to shell')
+            continue
+          }
+        }
+      }
+
+      if (!previousState) {
+        this.state.set(stateKey, { lastMessageAt })
+      } else if (previousState.lastMessageAt !== lastMessageAt) {
+        // Progress clears the stall tracking, but NOT the nudge budget: an agent
+        // that only ever answers the nudge itself would otherwise reset it too.
+        this.state.set(stateKey, {
+          lastMessageAt,
+          nudgeCount: previousState.nudgeCount,
+          nudgeBudgetSpentAt: previousState.nudgeBudgetSpentAt,
+        })
+        continue
+      }
+
+      const lastMessageMs = new Date(lastMessageAt).getTime()
+      if (Number.isNaN(lastMessageMs)) continue
+
+      const nowMs = this.now()
+      const idleMs = nowMs - lastMessageMs
+      const currentState = this.state.get(stateKey) ?? { lastMessageAt }
+
+      // Already given up on this agent: never nudge or log again.
+      if (currentState.unreachableAt) continue
+
+      if (!currentState.nudgedAt && idleMs >= this.nudgeAfterMs) {
+        const nudgeCount = currentState.nudgeCount ?? 0
+
+        if (nudgeCount >= this.maxNudges) {
+          if (!currentState.nudgeBudgetSpentAt) {
+            this.state.set(stateKey, {
+              ...currentState,
+              nudgeBudgetSpentAt: new Date(nowMs).toISOString(),
+            })
+            this.deps.appendMessage(team.id, {
+              id: uuidv4(),
+              teamId: team.id,
+              from: 'ensemble',
+              to: 'team',
+              content: `🔕 Watchdog stopped nudging ${agent.name} after ${nudgeCount} nudges without progress`,
+              type: 'chat',
+              timestamp: new Date(nowMs).toISOString(),
+            })
+          }
+          continue
+        }
+
+        try {
+          await this.nudgeAgent(team, agent.name, agent.program, agent.hostId)
+          this.state.set(stateKey, {
+            lastMessageAt,
+            nudgedAt: new Date(nowMs).toISOString(),
+            nudgeCount: nudgeCount + 1,
+          })
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : String(err)
+          const failedNudges = (currentState.failedNudges ?? 0) + 1
+          const givingUp = failedNudges >= this.maxFailedNudges
+
+          if (givingUp) {
+            this.deps.onAgentStalled?.(team, agent, reason)
+            // Keep the roster truthful. Failed agents must not block sentinel
+            // completion or idle fallback for the agents that remain alive.
+            agent.status = 'failed'
+            this.deps.markAgentFailed?.(team.id, agent.name)
+          }
+
+          this.state.set(stateKey, {
+            ...currentState,
+            failedNudges,
+            // Marking it stalled too keeps the existing stall reporting coherent.
+            ...(givingUp
+              ? {
+                  unreachableAt: new Date(nowMs).toISOString(),
+                  stalledAt: new Date(nowMs).toISOString(),
+                }
+              : {}),
+          })
+
+          // Only speak up on the first failure and on the final one. In between we
+          // stay quiet, because it is the same failure and the feed is the archive.
+          if (failedNudges === 1 || givingUp) {
+            this.deps.appendMessage(team.id, {
+              id: uuidv4(),
+              teamId: team.id,
+              from: 'ensemble',
+              to: 'team',
+              content: givingUp
+                ? `❌ Watchdog gave up on ${agent.name} after ${failedNudges} failed nudges: ${reason}`
+                : `❌ Watchdog failed to nudge ${agent.name}: ${reason}`,
+              type: 'chat',
+              timestamp: new Date(nowMs).toISOString(),
+            })
+          }
+
+          if (givingUp) await this.reportIfTeamUnreachable(team)
+        }
+        continue
+      }
+
+      if (!currentState.nudgedAt || currentState.stalledAt) continue
+
+      const nudgedMs = new Date(currentState.nudgedAt).getTime()
+      if (Number.isNaN(nudgedMs) || nowMs - nudgedMs < this.stallAfterMs) continue
+
+      if (this.deps.replacementEnabled?.()) {
+        await this.handleStall(team, agent, 'Agent stalled after watchdog nudge')
+        continue
+      }
+      this.deps.onAgentStalled?.(team, agent, 'Agent stalled after watchdog nudge')
+      console.warn(`[Watchdog] Agent ${agent.name} in team ${team.id} stalled after watchdog nudge`)
+      this.deps.appendMessage(team.id, {
+        id: uuidv4(),
+        teamId: team.id,
+        from: 'ensemble',
+        to: 'team',
+        content: `⚠️ Watchdog marked ${agent.name} as stalled after ${Math.round((nowMs - nudgedMs) / 1000)}s without progress after nudge`,
+        type: 'chat',
+        timestamp: new Date(nowMs).toISOString(),
+      })
+      this.state.set(stateKey, {
+        ...currentState,
+        stalledAt: new Date(nowMs).toISOString(),
+      })
+    }
+  }
+
+  private hasStarted(team: EnsembleTeam, agent: EnsembleTeamAgent): boolean {
+    if (agent.startedAt) return true
+    const createdMs = new Date(team.createdAt).getTime()
+    return Number.isNaN(createdMs) || this.now() - createdMs >= this.startupGraceMs
+  }
+
+  private async handleStall(team: EnsembleTeam, agent: EnsembleTeamAgent, detail: string): Promise<void> {
+    this.deps.onAgentStalled?.(team, agent, detail)
+    if (await this.deps.replaceAgent?.(team, agent, detail)) {
+      agent.status = 'replaced'
+      const refreshed = this.deps.loadTeams().find(candidate => candidate.id === team.id)
+      if (refreshed) team.agents = refreshed.agents
+      this.state.delete(`${team.id}:${agent.name}`)
+      this.remoteAbsences.delete(`${team.id}:${agent.name}`)
+      return
+    }
+    agent.status = 'failed'
+    this.deps.markAgentFailed?.(team.id, agent.name)
+    this.deps.appendMessage(team.id, { id: uuidv4(), teamId: team.id, from: 'ensemble', to: 'team', type: 'chat', timestamp: new Date(this.now()).toISOString(), content: `Agent ${agent.name} failed: ${detail}; no replacement available` })
+    await this.reportIfTeamUnreachable(team)
+  }
+
+  /**
+   * Once no active agent is reachable anymore the team cannot produce anything.
+   * Hand it to the service so it can write a summary and disband, instead of
+   * leaving it 'active' with a bridge polling a session that no longer exists.
+   */
+  private async reportIfTeamUnreachable(team: EnsembleTeam): Promise<void> {
+    if (!this.deps.onTeamUnreachable) return
+    const activeAgents = team.agents.filter(candidate => candidate.status === 'active')
+    let reason: string
+    if (activeAgents.length === 0) {
+      // `every` on an empty list is true, which used to end the team with "all 0
+      // agent session(s) unreachable after N failed nudges". With no active agent
+      // left the team can indeed no longer finish, but only say so when the
+      // watchdog itself failed them, and say what actually happened.
+      const failed = team.agents.filter(candidate => candidate.status === 'failed')
+      if (failed.length === 0 || team.agents.some(candidate => candidate.status === 'spawning')) return
+      reason = `no active agent left: ${failed.map(agent => agent.name).join(', ')} failed without replacement`
+    } else {
+      const allGone = activeAgents.every(agent => this.state.get(`${team.id}:${agent.name}`)?.unreachableAt)
+      if (!allGone) return
+      reason = `all ${activeAgents.length} agent session(s) unreachable after ${this.maxFailedNudges} failed nudges`
+    }
+
+    try {
+      await this.deps.onTeamUnreachable(team.id, reason)
+    } catch (err) {
+      console.error(`[Watchdog] onTeamUnreachable failed for ${team.id}:`, err)
+    }
+  }
+
+  private async nudgeAgent(team: EnsembleTeam, agentName: string, program: string, hostId?: string): Promise<void> {
+    const timestamp = new Date(this.now()).toISOString()
+    this.deps.appendMessage(team.id, {
+      id: uuidv4(),
+      teamId: team.id,
+      from: 'ensemble',
+      to: 'team',
+      content: `👀 Watchdog nudged ${agentName}: ${WATCHDOG_NUDGE_TEXT}`,
+      type: 'chat',
+      timestamp,
+    })
+
+    const sessionName = `${team.name}-${agentName}`
+    if (hostId && !this.deps.isSelf(hostId)) {
+      const host = this.deps.getHostById(hostId)
+      if (host) {
+        await this.deps.postRemoteSessionCommand(host.url, sessionName, WATCHDOG_NUDGE_TEXT)
+      }
+      return
+    }
+
+    // Always use pasteFromFile to avoid shell escaping issues with sendKeys
+    const runtime = this.deps.getRuntime()
+    const filePath = this.deps.collabDeliveryFile(team.id, sessionName)
+    fs.mkdirSync(path.dirname(filePath), { recursive: true })
+    fs.writeFileSync(filePath, WATCHDOG_NUDGE_TEXT)
+    await runtime.pasteFromFile(sessionName, filePath, { bracketed: this.deps.resolveAgentProgram(program).bracketedPaste === true })
+  }
+}
+
+export {
+  DEFAULT_POLL_INTERVAL_MS,
+  DEFAULT_NUDGE_MS,
+  DEFAULT_STALL_MS,
+  DEFAULT_MAX_FAILED_NUDGES,
+  DEFAULT_MAX_NUDGES,
+  DEFAULT_STARTUP_GRACE_MS,
+  WATCHDOG_NUDGE_TEXT,
+}

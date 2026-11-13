@@ -1,0 +1,4 @@
+bin/wc.js
+lib/count.js
+README.md
+test/json.test.js

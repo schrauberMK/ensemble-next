@@ -1,0 +1,1 @@
+{ "name": "t2-wc", "private": true, "scripts": { "test": "node test/count.test.js" } }

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>ensemble-next Kurzanleitung</title>
+<style>
+  @page { size: A4; margin: 12mm 14mm 11mm; }
+  :root { --ink:#1d2430; --muted:#5b6575; --line:#d9dee6; --accent:#2f5d8a; --soft:#eef3f8; --ok:#2e7d4f; --warn:#a0631b; --bad:#a33a3a; }
+  * { box-sizing: border-box; }
+  body { font: 9.2pt/1.34 "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; color: var(--ink); margin: 0; background:#fff; }
+  h1 { font-size: 19pt; margin: 0 0 2pt; color: var(--accent); }
+  .sub { color: var(--muted); margin: 0 0 10pt; }
+  h2 { font-size: 11pt; color: var(--accent); margin: 7pt 0 3pt; padding-bottom: 2pt; border-bottom: 1px solid var(--line); }
+  p { margin: 0 0 5pt; }
+  ul, ol { margin: 0 0 5pt; padding-left: 15pt; }
+  li { margin-bottom: 2pt; }
+  code, pre { font-family: "DejaVu Sans Mono", Menlo, monospace; font-size: 8.6pt; }
+  code { background: var(--soft); padding: 0 2pt; border-radius: 2pt; }
+  pre { background: var(--soft); border-left: 3px solid var(--accent); padding: 5pt 7pt; margin: 3pt 0 6pt; white-space: pre-wrap; word-break: break-all; }
+  table { border-collapse: collapse; width: 100%; margin: 3pt 0 6pt; font-size: 9pt; }
+  th, td { text-align: left; vertical-align: top; padding: 2.4pt 5pt; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-weight: 600; }
+  .flow { display: flex; gap: 4pt; margin: 4pt 0 8pt; }
+  .step { flex: 1; border: 1px solid var(--line); border-top: 3px solid var(--accent); padding: 5pt 6pt; font-size: 8.8pt; }
+  .step b { display: block; font-size: 9.2pt; margin-bottom: 1pt; }
+  .note { border: 1px solid var(--line); background: #fafbfc; border-radius: 3pt; padding: 5pt 7pt; margin: 4pt 0 6pt; font-size: 9pt; }
+  .ok { color: var(--ok); font-weight: 600; } .warn { color: var(--warn); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
+  .cols { display: flex; gap: 12pt; } .cols > div { flex: 1; }
+  .page-break { break-before: page; }
+  footer { margin-top: 6pt; color: var(--muted); font-size: 8pt; border-top: 1px solid var(--line); padding-top: 4pt; }
+</style>
+</head>
+<body>
+
+<h1>ensemble-next – Kurzanleitung</h1>
+<p class="sub">Version 1.1.0 · Stand 30.10.2026 · <code>~/projekte/ensemble-next</code></p>
+
+<h2>Was es macht</h2>
+<p>Du gibst eine Aufgabe und einen Projektordner vor. <b>Claude Code</b> plant und setzt die Aufgabe allein um. Danach prüft <b>Codex</b> das Ergebnis <b>blind</b>, ohne Lesezugriff auf den Chat und nur lesend. Codex sieht dabei die Aufgabe, den Diff und das Protokoll des Abschlusschecks. Grundlage ist die Messreihe aus Paket 3 mit 16 Läufen: Die Qualität war gleich wie mit Codex als Planer, und der Ablauf war etwa dreimal so schnell (Median 57 s statt 156 s).</p>
+
+<div class="flow">
+  <div class="step"><b>1 · Start</b><code>/collab-next</code> oder <code>collab-launch.sh</code></div>
+  <div class="step"><b>2 · Claude arbeitet</b>plant, schreibt den Code und testet</div>
+  <div class="step"><b>3 · Abschlusscheck</b>automatisch beim Stopp: npm-Skripte, pytest</div>
+  <div class="step"><b>4 · Blinde Prüfung</b>Codex, read-only, ca. 20 s bis wenige Minuten</div>
+  <div class="step"><b>5 · Urteil</b><code>review/verdict.txt</code>; committen musst du selbst</div>
+</div>
+
+<h2>Einmalig: Server starten</h2>
+<p>In einem <b>normalen Terminal</b>, nicht aus der Claude-Desktop-App heraus. Das Fenster bleibt offen:</p>
+<pre>cd ~/projekte/ensemble-next &amp;&amp; npm run dev
+curl -s localhost:23100/api/v1/health      # → {"status":"healthy","version":"1.1.0"}</pre>
+<p>Voraussetzungen: Node, tmux, python3 sowie die CLIs <code>claude</code> und <code>codex</code>, beide angemeldet.</p>
+
+<h2>Einen Auftrag starten</h2>
+<p><b>Der Projektordner muss ein Git-Repo mit mindestens einem Commit sein.</b> Die Prüfung vergleicht gegen diesen Stand. Ein neuer Ordner geht zum Beispiel so:</p>
+<pre>mkdir -p ~/projekte/mein-test &amp;&amp; cd ~/projekte/mein-test &amp;&amp; git init -q &amp;&amp; echo "# Test" &gt; README.md &amp;&amp; git add . &amp;&amp; git commit -qm Start</pre>
+<div class="cols">
+<div>
+<p><b>A · In Claude Code</b> (empfohlen), im Projektordner:</p>
+<pre>/collab-next Schreibe … Alle Tests müssen grün sein.</pre>
+<p>Claude startet das Team, zeigt die Nachrichten und am Ende das Urteil.</p>
+</div>
+<div>
+<p><b>B · Direkt im Terminal:</b></p>
+<pre>~/projekte/ensemble-next/scripts/collab-launch.sh \
+  ~/projekte/mein-test "Aufgabe …"</pre>
+<p>Die Ausgabe nennt die <code>TEAM_ID</code> und den Befehl <code>tmux attach</code> zum Zuschauen.</p>
+</div>
+</div>
+<p><b>Gute Aufträge</b> nennen ein prüfbares Ziel, zum Beispiel „…, mit Tests, alle Tests grün“, „<code>test/</code> nicht ändern“ oder „nur Datei X“. An diesen Kriterien misst Codex das Ergebnis.</p>
+
+<h2>Ergebnis lesen</h2>
+<p>Alles liegt unter <code>/tmp/ensemble-next/&lt;TEAM_ID&gt;/</code>. Der Ordner wird beim Neustart des Rechners gelöscht.</p>
+<table>
+  <tr><th style="width:30%">Datei</th><th>Inhalt</th></tr>
+  <tr><td><code>summary.txt</code></td><td>Zusammenfassung: Rückmeldung von Claude, geänderte Dateien, Tests, Abschlusscheck</td></tr>
+  <tr><td><code>review/verdict.txt</code></td><td>Urteil von Codex mit jedem Kriterium und Befunden samt Zeilenangabe; die Prüfung ist fertig, sobald <code>review/.done</code> existiert</td></tr>
+  <tr><td><code>review/error.txt</code></td><td>nur wenn die Prüfung kein Urteil liefern konnte</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>Urteile und was du tust</h2>
+<table>
+  <tr><th style="width:24%">Urteil</th><th>Bedeutung</th><th style="width:34%">Nächster Schritt</th></tr>
+  <tr><td class="ok">ACCEPTED</td><td>Alle Kriterien sind erfüllt, der Abschlusscheck steht auf PASS, es gibt keinen Blocker.</td><td>Diff ansehen, dann selbst committen.</td></tr>
+  <tr><td class="warn">CHANGES_REQUESTED</td><td>Mindestens ein Kriterium ist nicht erfüllt oder nicht belegbar, die Lücken sind behebbar.</td><td>Befunde lesen, dann nachbessern lassen oder selbst entscheiden.</td></tr>
+  <tr><td class="bad">REJECTED</td><td>Das Ergebnis geht in die falsche Richtung, Prüfungen wurden abgeschwächt, oder es wurde weit außerhalb der Aufgabe geändert.</td><td>Nicht übernehmen, Auftrag schärfen.</td></tr>
+</table>
+<p>Meldet Claude selbst <code>BLOCKED</code> oder <code>NEEDS_DECISION</code>, läuft keine Prüfung. Dann bist du gefragt, zum Beispiel weil sich Vorgaben widersprechen.</p>
+
+<h2>Abschlusscheck (automatisch)</h2>
+<p>Der Check läuft jedes Mal, wenn Claude stoppt, und ist der Beleg für „Tests grün“. Ausgeführt wird nur, was das Projekt selbst festlegt:</p>
+<ul>
+  <li><b>JavaScript/TypeScript:</b> die npm-Skripte <code>typecheck</code>, <code>lint</code>, <code>test</code> und <code>build</code>, sofern sie in <code>package.json</code> stehen.</li>
+  <li><b>Python:</b> <code>pytest</code>, sobald es <code>test_*.py</code>, <code>conftest.py</code> oder eine pytest-Konfiguration gibt. pytest läuft mit dem <code>.venv</code> des Projekts, falls vorhanden.</li>
+</ul>
+<table>
+  <tr><th style="width:24%">Status</th><th>Bedeutung</th></tr>
+  <tr><td class="ok">PASS</td><td>Alle Prüfungen sind grün.</td></tr>
+  <tr><td class="bad">FAIL</td><td>Claude wird bis zu dreimal zum Nachbessern zurückgeschickt.</td></tr>
+  <tr><td class="warn">INCOMPLETE</td><td>Zeitüberschreitung, oder npm bzw. pytest fehlt.</td></tr>
+  <tr><td class="warn">SKIPPED</td><td>Das Projekt legt keine Prüfungen fest. Codex kann „Tests grün“ dann nicht bestätigen.</td></tr>
+</table>
+
+<h2>Schalter (Umgebungsvariablen)</h2>
+<table>
+  <tr><th style="width:38%">Variable</th><th>Wirkung</th></tr>
+  <tr><td><code>COLLAB_AGENTS=codex,claude</code></td><td>Echtes Team statt Claude allein; der erste Agent übernimmt die Leitung.</td></tr>
+  <tr><td><code>COLLAB_AUTO_REVIEW=0</code></td><td>Keine blinde Prüfung für diesen Start.</td></tr>
+  <tr><td><code>ENSEMBLE_AUTO_REVIEW=0</code></td><td>Keine Prüfung für den ganzen Server (beim Serverstart setzen).</td></tr>
+  <tr><td><code>COLLAB_AGENT_WAIT_SECS</code></td><td>Wartezeit auf die erste Nachricht beim Start (Standard 60 s).</td></tr>
+  <tr><td><code>COLLAB_REVIEW_RETRY_S</code></td><td>Pause vor einem neuen Versuch, wenn Codex „at capacity“ meldet (Standard 120 s, höchstens 3 Versuche).</td></tr>
+</table>
+
+<h2>Wenn etwas hakt</h2>
+<ul>
+  <li><b>Keine Prüfung, obwohl READY_FOR_REVIEW gemeldet wurde:</b> Fehlt <code>review/started</code>, steht der Grund im Server-Terminal (Zeile „blind review not started“). Liegt <code>review/error.txt</code> vor, sieh in <code>review/codex.log</code> nach.</li>
+  <li><b>Agent startet nicht:</b> <code>tmux attach -t $(head -1 /tmp/ensemble-next/&lt;TEAM_ID&gt;/sessions)</code> zeigt, wo er hängt. Den tmux-Server im normalen Terminal starten.</li>
+  <li><b>Prüfung von Hand wiederholen:</b><br><code>scripts/collab-review.sh &lt;Team&gt;/review &lt;Projektordner&gt; [&lt;Basis-Commit&gt;]</code></li>
+</ul>
+
+<div class="note"><b>Wichtig:</b> Das Team committet nichts. Den Commit machst du selbst, nachdem du das Urteil und den Diff gesehen hast. Jede Prüfung verbraucht etwas Codex-Kontingent. Das bisherige System (<code>~/ensemble</code>, <code>/collab</code>, Port 23000) ist unverändert und bleibt der Rückfallweg.</div>
+
+<footer>ensemble-next 1.1.0 · Details im Repo: <code>CHANGELOG-2026-10-30.md</code>, <code>NEXT.md</code>, <code>docs/</code></footer>
+</body>
+</html>

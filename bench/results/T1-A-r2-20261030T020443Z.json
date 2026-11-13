@@ -1,0 +1,168 @@
+{
+  "runId": "T1-A-r2-20261030T020443Z",
+  "task": "T1",
+  "variant": "A",
+  "rep": 2,
+  "status": "finished",
+  "dryRun": false,
+  "teamId": "79429c4f-9597-40e1-9a9d-f7ae46c77967",
+  "teamName": "collabnext-1793325889798-4702",
+  "ensembleNextCommit": "1eaf97c783b4b44baa5bdd86830458ca8fb06b56",
+  "ensembleNextDirty": true,
+  "quality": {
+    "hiddenPass": true,
+    "visiblePass": true,
+    "guardIntact": true,
+    "scopeViolation": false,
+    "escalationExpected": false,
+    "escalationCorrect": null,
+    "falseEscalation": false,
+    "readyWithoutPass": false,
+    "verdict": "ACCEPTED",
+    "aborted": false,
+    "invalid": null
+  },
+  "changes": {
+    "files": [
+      "src/paginate.js"
+    ],
+    "outOfScope": [],
+    "guardBroken": [],
+    "commits": []
+  },
+  "checks": {
+    "visible": [
+      {
+        "name": "test",
+        "pass": true,
+        "tail": ""
+      }
+    ],
+    "hidden": {
+      "pass": true,
+      "tail": "hidden ok"
+    }
+  },
+  "finalCheck": {
+    "status": "PASS",
+    "unresolved": false,
+    "checks": [
+      {
+        "name": "npm run test",
+        "status": "PASS",
+        "exitCode": 0,
+        "ms": 272,
+        "tail": ""
+      }
+    ],
+    "file": "/tmp/ensemble-next/verify/688270a8-714b-475a-b9b4-8b63e9cdd3d5.json"
+  },
+  "rework": {
+    "hookBlocks": 0,
+    "questions": 0
+  },
+  "time": {
+    "durationS": 136.4,
+    "firstChangeS": 46.5
+  },
+  "usage": {
+    "since": "2026-10-30T02:04:49.857Z",
+    "claude": {
+      "messages": 11,
+      "tokens": {
+        "input_tokens": 32,
+        "cache_creation_input_tokens": 29971,
+        "cache_read_input_tokens": 552069,
+        "output_tokens": 2481,
+        "total": 584553
+      },
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "sessions": [
+        "688270a8-714b-475a-b9b4-8b63e9cdd3d5"
+      ],
+      "sidechainMessages": 0,
+      "hookBlocks": 0,
+      "projectDir": "/home/user/.claude/projects/-tmp-ensemble-next-bench-T1-A-r2-20261030T020443Z-work"
+    },
+    "codex": {
+      "lead": [
+        {
+          "originator": "codex-tui",
+          "model": "gpt-6.1-sol",
+          "file": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-04-52-01a18a8d-8271-7632-815f-e4e42bafffdd.jsonl",
+          "input": 219161,
+          "cachedInput": 197248,
+          "output": 1823,
+          "reasoning": 133,
+          "total": 220984
+        }
+      ],
+      "probes": [],
+      "reviewer": [
+        {
+          "originator": "codex_exec",
+          "model": "gpt-6.1-sol",
+          "file": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-07-59-01a18a90-5a70-7443-a5fb-7c308b611f26.jsonl",
+          "input": 25587,
+          "cachedInput": 0,
+          "output": 307,
+          "reasoning": 150,
+          "total": 25894
+        }
+      ],
+      "leadTotal": 220984,
+      "reviewerTotal": 25894,
+      "models": [
+        "gpt-6.1-sol"
+      ]
+    }
+  },
+  "codexLimits": {
+    "before": {
+      "primaryUsedPercent": 24.0,
+      "secondaryUsedPercent": 7.0,
+      "primaryResetsAt": 1793326761,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-04-28-01a18a8d-275d-7551-a029-e2f69771c03e.jsonl"
+    },
+    "after": {
+      "primaryUsedPercent": 26.0,
+      "secondaryUsedPercent": 7.0,
+      "primaryResetsAt": 1793326761,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T03-04-52-01a18a8d-8271-7632-815f-e4e42bafffdd.jsonl"
+    }
+  },
+  "messages": {
+    "senders": [
+      "claude-2",
+      "codex-1"
+    ],
+    "total": 6,
+    "byType": {
+      "chat": 2,
+      "decision": 2,
+      "result": 2
+    },
+    "chars": 2597,
+    "questions": 0,
+    "returnStatus": "READY_FOR_REVIEW",
+    "readyClaims": 1
+  },
+  "review": {
+    "verdict": "ACCEPTED",
+    "blind": true,
+    "criteria": {
+      "met": 4,
+      "not met": 0,
+      "not verifiable": 0
+    },
+    "blockers": 0,
+    "file": "/tmp/ensemble-next-bench/T1-A-r2-20261030T020443Z/review/verdict.txt"
+  },
+  "collectedAt": "2026-10-30T02:08:18.826316Z"
+}

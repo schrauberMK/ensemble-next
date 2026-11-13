@@ -1,0 +1,155 @@
+{
+  "runId": "T1-A-r0-20261029T225709Z",
+  "task": "T1",
+  "variant": "A",
+  "rep": 0,
+  "status": "finished",
+  "dryRun": false,
+  "teamId": "030486a8-d5d3-4585-ba9c-6c850a46f5a0",
+  "teamName": "collabnext-1793314639992-5010",
+  "ensembleNextCommit": "6fb355427d4053843d1749393526f45f3cdcbb56",
+  "ensembleNextDirty": true,
+  "quality": {
+    "hiddenPass": true,
+    "visiblePass": true,
+    "guardIntact": true,
+    "scopeViolation": false,
+    "escalationExpected": false,
+    "escalationCorrect": null,
+    "falseEscalation": false,
+    "readyWithoutPass": false,
+    "verdict": "ACCEPTED",
+    "aborted": false,
+    "invalid": "codex lead sent no message"
+  },
+  "changes": {
+    "files": [
+      "src/paginate.js"
+    ],
+    "outOfScope": [],
+    "guardBroken": [],
+    "commits": []
+  },
+  "checks": {
+    "visible": [
+      {
+        "name": "test",
+        "pass": true,
+        "tail": ""
+      }
+    ],
+    "hidden": {
+      "pass": true,
+      "tail": "hidden ok"
+    }
+  },
+  "finalCheck": {
+    "status": "PASS",
+    "unresolved": false,
+    "checks": [
+      {
+        "name": "npm run test",
+        "status": "PASS",
+        "exitCode": 0,
+        "ms": 270,
+        "tail": ""
+      }
+    ],
+    "file": "/tmp/ensemble-next/verify/2ecb70b9-8761-4733-83f6-446025e0293e.json"
+  },
+  "rework": {
+    "hookBlocks": 0,
+    "questions": 0
+  },
+  "time": {
+    "durationS": 175.5,
+    "firstChangeS": 154.2
+  },
+  "usage": {
+    "since": "2026-10-29T22:57:20.085Z",
+    "claude": {
+      "messages": 8,
+      "tokens": {
+        "input_tokens": 18,
+        "cache_creation_input_tokens": 28464,
+        "cache_read_input_tokens": 384587,
+        "output_tokens": 2266,
+        "total": 415335
+      },
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "sessions": [
+        "2ecb70b9-8761-4733-83f6-446025e0293e"
+      ],
+      "sidechainMessages": 0,
+      "hookBlocks": 0,
+      "projectDir": "/home/user/.claude/projects/-tmp-ensemble-next-bench-T1-A-r0-20261029T225709Z-work"
+    },
+    "codex": {
+      "lead": [],
+      "probes": [],
+      "reviewer": [
+        {
+          "originator": "codex_exec",
+          "model": "gpt-6.1-sol",
+          "file": "/home/user/.codex/sessions/2026/10/30/rollout-2026-10-30T00-00-19-01a189e4-89a9-7110-9771-c59d65e5366f.jsonl",
+          "input": 25584,
+          "cachedInput": 0,
+          "output": 273,
+          "reasoning": 94,
+          "total": 25857
+        }
+      ],
+      "leadTotal": 0,
+      "reviewerTotal": 25857,
+      "models": [
+        "gpt-6.1-sol"
+      ]
+    }
+  },
+  "codexLimits": {
+    "before": {
+      "primaryUsedPercent": 10.0,
+      "secondaryUsedPercent": 5.0,
+      "primaryResetsAt": 1793326761,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/29/rollout-2026-10-29T23-49-50-01a189da-f17d-77e3-a6f1-fa1099097024.jsonl"
+    },
+    "after": {
+      "primaryUsedPercent": 10.0,
+      "secondaryUsedPercent": 5.0,
+      "primaryResetsAt": 1793326761,
+      "stale": false,
+      "planType": "plus",
+      "source": "/home/user/.codex/sessions/2026/10/29/rollout-2026-10-29T23-57-12-01a189e1-b11e-7cc3-be82-4d0ca1aeb2b5.jsonl"
+    }
+  },
+  "messages": {
+    "senders": [
+      "claude-2"
+    ],
+    "total": 2,
+    "byType": {
+      "chat": 1,
+      "result": 1
+    },
+    "chars": 550,
+    "questions": 0,
+    "returnStatus": "READY_FOR_REVIEW",
+    "readyClaims": 1
+  },
+  "review": {
+    "verdict": "ACCEPTED",
+    "blind": true,
+    "criteria": {
+      "met": 4,
+      "not met": 0,
+      "not verifiable": 0
+    },
+    "blockers": 0,
+    "file": "/tmp/ensemble-next-bench/T1-A-r0-20261029T225709Z/review/verdict.txt"
+  },
+  "collectedAt": "2026-10-29T23:00:29.978857Z"
+}
